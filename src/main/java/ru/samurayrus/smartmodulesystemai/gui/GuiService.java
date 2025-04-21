@@ -3,9 +3,11 @@ package ru.samurayrus.smartmodulesystemai.gui;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import ru.samurayrus.smartmodulesystemai.proxy.AiWorkerService;
 import ru.samurayrus.smartmodulesystemai.proxy.ChatMessage;
 import ru.samurayrus.smartmodulesystemai.proxy.ChatRequest;
 import ru.samurayrus.smartmodulesystemai.proxy.GptController;
@@ -20,12 +22,15 @@ import java.util.ArrayList;
 public class GuiService {
 
     private final DefaultListModel<String> messageListModel = new DefaultListModel<>();
-    public ChatRequest currentContext;
+    @Getter
+    private ChatRequest currentContext;
     public final GptController gptController;
+    private final AiWorkerService aiWorkerService;
 
     @Autowired
-    public GuiService(@Lazy GptController gptController) {
+    public GuiService(@Lazy GptController gptController, AiWorkerService aiWorkerService) {
         this.gptController = gptController;
+        this.aiWorkerService = aiWorkerService;
         currentContext = makeFirstChatRequest();
     }
 
@@ -62,12 +67,8 @@ public class GuiService {
             public void actionPerformed(ActionEvent e) {
                 String message = inputField.getText().trim();
                 if (!message.isEmpty()) {
-                    try {
-                        addMessageToContextAndMessagesList("user", message);
-                        addMessageToContextAndMessagesList("assistant", gptController.getChatCompletions(new ObjectMapper().writeValueAsString(currentContext)).getBody());
-                    } catch (JsonProcessingException ex) {
-                        ex.printStackTrace();
-                    }
+                    addMessageToContextAndMessagesList("user", message);
+                    aiWorkerService.workForAi(GuiService.this);
 
                     inputField.setText("");
                 }
@@ -79,17 +80,17 @@ public class GuiService {
         frame.setVisible(true);
     }
 
-    public void addMessageToContextAndMessagesList(final String user, final String log) {
-        messageListModel.addElement(user + ": " + log);
-        if (user.equals("tool") || user.equals("assistant") || user.equals("user")) {
+    public void addMessageToContextAndMessagesList(final String user, final String content) {
+        messageListModel.addElement(user + ": " + content);
+        if (user.equals("tool") || user.equals("assistant") || user.equals("user") || user.equals("system")) {
             ChatMessage chatMessage = new ChatMessage();
             chatMessage.setRole(user);
-            chatMessage.setContent(log);
+            chatMessage.setContent(content);
             currentContext.getMessages().add(chatMessage);
         }
     }
 
-    public ChatRequest makeFirstChatRequest() {
+    private ChatRequest makeFirstChatRequest() {
         ChatRequest chatRequest = new ChatRequest();
         chatRequest.setMaxTokens(300);
         chatRequest.setFrequencyPenalty(0);
