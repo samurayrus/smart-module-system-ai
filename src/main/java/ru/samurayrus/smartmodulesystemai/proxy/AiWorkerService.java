@@ -46,7 +46,8 @@ public class AiWorkerService {
 
 
                 ChatRequest chatRequest = mapper.readValue(fullPrompt, ChatRequest.class);
-                guiService.addMessageToPane("worker-ai", fullPrompt);
+//                guiService.addMessageToPane("worker-ai", fullPrompt);
+
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API
@@ -63,8 +64,7 @@ public class AiWorkerService {
                     isComplete = !checkForSqlQueryInContentAndWork(content);
 
                     // Отправляем нейронке результат и ждем реакции
-
-
+                    // <--
                 } else {
                     throw new Exception("LLM API returned an error: " + response.getStatusCode());
                 }
