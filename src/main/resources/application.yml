@@ -1,0 +1,34 @@
+app:
+  version: 0.1.0
+
+spring:
+  application:
+    name: SmartModuleSystemAi
+  servlet:
+    multipart:
+      max-file-size: 80MB
+      max-request-size: 80MB
+  #  config:
+  #    import: file:./additional.yml
+  #  main:
+  #    web-application-type: reactive
+  datasource:
+    url: jdbc:postgresql://xxx
+    username: xxx
+    password: xxx
+    driver-class-name: org.postgresql.Driver
+
+server:
+  port: 8089
+  ssl:
+    enabled: false
+    key-store: keystore.p12
+    key-store-password: xxx
+    key-store-type: PKCS12
+    key-alias: tomcat
+
+logging:
+  file:
+    name: smsai.log
+  level:
+    root: info
