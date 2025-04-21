@@ -16,18 +16,19 @@ public class DataBaseWorkerService {
 
     public Object executeSql(String sql) {
         System.out.println("\n ---- \n Запрос к бд {" + sql + "} \n ---");
-        sql = sql.trim().toLowerCase();
+        sql = sql.trim();
+        String sqlForFilter = sql.toLowerCase();
 
         try {
-            if (sql.startsWith("select")) {
+            if (sqlForFilter.startsWith("select")) {
                 // Для запросов с возвратом данных
                 return jdbcTemplate.queryForList(sql);
-            } else if (sql.startsWith("insert") || sql.startsWith("update")
-                    || sql.startsWith("delete") || sql.startsWith("merge")) {
+            } else if (sqlForFilter.startsWith("insert") || sqlForFilter.startsWith("update")
+                    || sqlForFilter.startsWith("delete") || sqlForFilter.startsWith("merge")) {
                 // Для изменяющих запросов
                 return jdbcTemplate.update(sql);
-            } else if (sql.startsWith("create") || sql.startsWith("alter")
-                    || sql.startsWith("drop") || sql.startsWith("truncate")) {
+            } else if (sqlForFilter.startsWith("create") || sqlForFilter.startsWith("alter")
+                    || sqlForFilter.startsWith("drop") || sqlForFilter.startsWith("truncate")) {
                 // Для DDL-запросов
                 jdbcTemplate.execute(sql);
                 return "DDL операция выполнена успешно";

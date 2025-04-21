@@ -127,7 +127,7 @@ public class GuiService {
                 // Цвета для разных отправителей
                 Color color = switch (sender) {
                     case "user" -> new Color(70, 130, 180);
-                    case "assistant" -> new Color(178, 46, 27);
+                    case "assistant" -> new Color(147, 35, 19);
                     case "worker-ai" -> new Color(180, 180, 180);
                     case "tool" -> new Color(136, 175, 53);
                     default -> Color.BLACK;
