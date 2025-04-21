@@ -46,7 +46,7 @@ public class AiWorkerService {
 
 
                 ChatRequest chatRequest = mapper.readValue(fullPrompt, ChatRequest.class);
-                guiService.addMessageToContextAndMessagesList("worker-ai", fullPrompt);
+                guiService.addMessageToPane("worker-ai", fullPrompt);
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API
@@ -57,7 +57,7 @@ public class AiWorkerService {
 
                     //  Получаем content, а т.е ответ от нейронки
                     String content = getContentFromJsonFromAi(response.getBody());
-                    guiService.addMessageToContextAndMessagesList("assistant", content);
+                    guiService.addMessageToPane("assistant", content);
 
                     // Если нейронка написала сообщение с ! то выполняем работы с бд
                     isComplete = !checkForSqlQueryInContentAndWork(content);
@@ -71,7 +71,7 @@ public class AiWorkerService {
             }
         } catch (Exception e) {
             log.error("Ошибка при работе с llm", e);
-            guiService.addMessageToContextAndMessagesList("worker-ai", "Ошибка при работе с llm - " + e.getMessage());
+            guiService.addMessageToPane("worker-ai", "Ошибка при работе с llm - " + e.getMessage());
         }
     }
 
@@ -91,14 +91,14 @@ public class AiWorkerService {
 
     public boolean checkForSqlQueryInContentAndWork(String content) {
         if (content.startsWith("!")) {
-            guiService.addMessageToContextAndMessagesList("tool", "[Запрос к бд]: " + content);
+            guiService.addMessageToPane("tool", "[Запрос к бд]: " + content);
             String value;
             try {
                 value = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(dataBaseWorkerService.executeSql(content.replaceFirst("!", " ")));
             } catch (Exception e) {
                 value = "[Ошибка при выполнении запроса]" + e.getMessage();
             }
-            guiService.addMessageToContextAndMessagesList("tool", value);
+            guiService.addMessageToPane("tool", value);
             return true;
         }
         return false;
@@ -122,10 +122,10 @@ public class AiWorkerService {
         try {
             ChatRequest chatRequest;
             if (chatRequesta == null) {
-                guiService.addMessageToContextAndMessagesList("back", prompt + endpoint);
+                guiService.addMessageToPane("back", prompt + endpoint);
                 chatRequest = new ObjectMapper().readValue(prompt, ChatRequest.class);
             } else {
-                guiService.addMessageToContextAndMessagesList("back-cyl", prompt + endpoint);
+                guiService.addMessageToPane("back-cyl", prompt + endpoint);
                 chatRequest = chatRequesta;
             }
 //        System.out.println(chatRequest.getMessages().size());
@@ -152,19 +152,19 @@ public class AiWorkerService {
 
                 // 4. Получаем content
                 String content = (String) message.get("content");
-                guiService.addMessageToContextAndMessagesList("back-content", content);
+                guiService.addMessageToPane("back-content", content);
                 System.out.println("Content: " + content);
 
                 if (content.startsWith("!")) {
                     System.out.println("\n ---- \n Запрос к бд" + content + " \n ---");
-                    guiService.addMessageToContextAndMessagesList("tool", "[Запрос к бд]: " + content);
+                    guiService.addMessageToPane("tool", "[Запрос к бд]: " + content);
                     String value = "Ответ нет";
                     try {
                         value = "[Ответ успешен! Sql запрос выполнен]" + processSqlResult(dataBaseWorkerService.executeSql(content.replaceFirst("!", " ")));
                     } catch (Exception e) {
                         value = "[Ошибка при выполнении запроса]" + e.getMessage();
                     }
-                    guiService.addMessageToContextAndMessagesList("tool", value);
+                    guiService.addMessageToPane("tool", value);
 
                     ChatMessage cm = new ChatMessage();
                     cm.setRole("tool");

@@ -88,11 +88,11 @@ public class GptController {
         try {
             ChatRequest chatRequest;
             if (chatRequesta == null) {
-                guiService.addMessageToContextAndMessagesList("back", prompt + endpoint);
+                guiService.addMessageToPane("back", prompt + endpoint);
                 chatRequest = new ObjectMapper().readValue(prompt, ChatRequest.class);
             }
             else{
-                guiService.addMessageToContextAndMessagesList("back-cyl", prompt + endpoint);
+                guiService.addMessageToPane("back-cyl", prompt + endpoint);
                 chatRequest = chatRequesta;
             }
 //        System.out.println(chatRequest.getMessages().size());
@@ -119,19 +119,19 @@ public class GptController {
 
                 // 4. Получаем content
                 String content = (String) message.get("content");
-                guiService.addMessageToContextAndMessagesList("back-content", content);
+                guiService.addMessageToPane("back-content", content);
                 System.out.println("Content: " + content);
 
                 if (content.startsWith("!")) {
                     System.out.println("\n ---- \n Запрос к бд" + content + " \n ---");
-                    guiService.addMessageToContextAndMessagesList("tool", "[Запрос к бд]: " + content);
+                    guiService.addMessageToPane("tool", "[Запрос к бд]: " + content);
                     String value = "Ответ нет";
                     try {
                         value = "[Ответ успешен! Sql запрос выполнен]" + processSqlResult(executeSql(content.replaceFirst("!", " ")));
                     }catch (Exception e){
                         value= "[Ошибка при выполнении запроса]" + e.getMessage();
                     }
-                    guiService.addMessageToContextAndMessagesList("tool", value);
+                    guiService.addMessageToPane("tool", value);
 
                     ChatMessage cm = new ChatMessage();
                     cm.setRole("tool");
