@@ -108,10 +108,7 @@ public class GuiService {
             addMessageToPane("user", message);
             inputField.setText("");
 
-            // Имитируем ответ от AI
-            SwingUtilities.invokeLater(() -> {
-                aiWorkerService.workForAi(GuiService.this);
-            });
+            new Thread(()->{aiWorkerService.workForAi(GuiService.this);}).start();
         }
     }
 
@@ -132,10 +129,10 @@ public class GuiService {
                         color = new Color(220, 80, 60);
                         break; // Красный
                     case "worker-ai":
-                        color = new Color(120, 120, 120);
+                        color = new Color(180, 180, 180);
                         break; // Серый
                     case "tool":
-                        color = new Color(180, 180, 180);
+                        color = new Color(136, 175, 53);
                         break; // Светло-серый
                     default:
                         color = Color.BLACK;
@@ -191,7 +188,7 @@ public class GuiService {
 
     private ChatRequest makeFirstChatRequest() {
         ChatRequest chatRequest = new ChatRequest();
-        chatRequest.setMaxTokens(300);
+        chatRequest.setMaxTokens(1500);
         chatRequest.setFrequencyPenalty(0);
         chatRequest.setModel("gemma-3-12b-it-qat");
         chatRequest.setTemperature(1);
