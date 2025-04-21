@@ -11,7 +11,6 @@ import ru.samurayrus.smartmodulesystemai.proxy.ChatRequest;
 import ru.samurayrus.smartmodulesystemai.proxy.GptController;
 
 import javax.swing.*;
-import javax.swing.text.AttributeSet;
 import javax.swing.text.Element;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -112,7 +111,9 @@ public class GuiService {
             addMessageToPane("user", message);
             inputField.setText("");
 
-            new Thread(()->{aiWorkerService.workForAi(GuiService.this);}).start();
+            new Thread(() -> {
+                aiWorkerService.workForAi(GuiService.this);
+            }).start();
         }
     }
 
@@ -124,80 +125,103 @@ public class GuiService {
                 HTMLDocument doc = (HTMLDocument) pane.getDocument();
 
                 // Цвета для разных отправителей
-                Color color;
-                switch (sender) {
-                    case "user":
-                        color = new Color(70, 130, 180);
-                        break; // Синий
-                    case "assistant":
-                        color = new Color(138, 47, 25);
-                        break; // Красный
-                    case "worker-ai":
-                        color = new Color(180, 180, 180, 210);
-                        break; // Серый
-                    case "tool":
-                        color = new Color(136, 175, 53);
-                        break; // Светло-серый
-                    default:
-                        color = Color.BLACK;
-                }
+                Color color = switch (sender) {
+                    case "user" -> new Color(70, 130, 180);
+                    case "assistant" -> new Color(178, 46, 27);
+                    case "worker-ai" -> new Color(180, 180, 180);
+                    case "tool" -> new Color(136, 175, 53);
+                    default -> Color.BLACK;
+                };
 
                 String hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-
-                // Форматируем сообщение как HTML
-                String formattedMessage = message.replace("\n", "<br>")
-                        .replace("  ", " &nbsp;");
-
+                String formattedMessage = message.replace("\n", "<br>").replace("  ", " &nbsp;");
                 String senderHtml = "<b>" + sender + ":</b> ";
-                // Добавляем ID к div для последующего поиска
-                String messageId = "msg-" + System.currentTimeMillis();
-                String messageHtml = "<div id='" + messageId + "' style='color:" + hexColor + "; margin: 5px 0;'>" +
+
+                // Сохраняем позицию перед вставкой
+                int startPos = doc.getLength();
+
+                // Вставляем сообщение с уникальным классом
+                String messageHtml = "<div class='new-message' style='color:" + hexColor + "; margin: 5px 0;'>" +
                         senderHtml + formattedMessage + "</div>";
 
-                // Добавляем сообщение
-                kit.insertHTML(doc, doc.getLength(), messageHtml, 0, 0, null);
-
-                // Прокручиваем вниз
+                kit.insertHTML(doc, startPos, messageHtml, 0, 0, null);
                 pane.setCaretPosition(doc.getLength());
 
-                // Мигание только нового сообщения
-                Timer timer = new Timer(100, new ActionListener() {
-                    int count = 0;
-                    Element element = doc.getElement(messageId);
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        if (element == null || count++ >= 6) {
-                            ((Timer) e.getSource()).stop();
-                            return;
-                        }
-
-                        try {
-                            AttributeSet original = element.getAttributes();
-                            SimpleAttributeSet attrs = new SimpleAttributeSet(original);
-
-                            // Чередуем цвет фона
-                            if (count % 2 == 0) {
-                                StyleConstants.setBackground(attrs, new Color(240, 240, 240)); // Исходный цвет
-                            } else {
-                                StyleConstants.setBackground(attrs, new Color(197, 250, 194)); // Цвет мигания
-                            }
-
-                            doc.setCharacterAttributes(element.getStartOffset(),
-                                    element.getEndOffset() - element.getStartOffset(),
-                                    attrs, false);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            ((Timer) e.getSource()).stop();
-                        }
-                    }
+                // Запускаем анимацию через небольшой таймаут
+                Timer timer = new Timer(150, e -> {
+                    ((Timer)e.getSource()).stop();
+                    animateNewMessage(doc, startPos);
                 });
+                timer.setRepeats(false);
                 timer.start();
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+    }
+
+    private void animateNewMessage(HTMLDocument doc, int startPos) {
+        try {
+            // Находим элемент по стартовой позиции
+            Element elem = doc.getCharacterElement(startPos);
+            if (elem == null) return;
+
+            // Получаем корневой элемент для сообщения
+            while (elem != null && !elem.getName().equals("div")) {
+                elem = elem.getParentElement();
+            }
+            if (elem == null) return;
+
+            final Element messageElem = elem;
+            Color originalBg = pane.getBackground();
+
+            Timer blinkTimer = new Timer(150, null);
+            blinkTimer.addActionListener(new ActionListener() {
+                int count = 0;
+                final int blinkCount = 4;
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (count >= blinkCount*2) {
+                        // Восстанавливаем оригинальный фон
+                        setElementBackground(doc, messageElem, new Color(0,0,0,0));
+                        blinkTimer.stop();
+                        return;
+                    }
+
+                    try {
+                        Color bgColor = (count % 2 == 0) ?
+                                new Color(220, 220, 255) : // цвет мигания
+                                new Color(0,0,0,0);        // прозрачный
+
+                        setElementBackground(doc, messageElem, bgColor);
+                        count++;
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        blinkTimer.stop();
+                    }
+                }
+            });
+            blinkTimer.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setElementBackground(HTMLDocument doc, Element elem, Color color) {
+        try {
+            SimpleAttributeSet attrs = new SimpleAttributeSet();
+            StyleConstants.setBackground(attrs, color);
+            doc.setCharacterAttributes(
+                    elem.getStartOffset(),
+                    elem.getEndOffset() - elem.getStartOffset(),
+                    attrs,
+                    false
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void addMessageToContextAndMessagesList(final String user, final String content) {
