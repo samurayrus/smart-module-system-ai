@@ -9,6 +9,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.samurayrus.smartmodulesystemai.databases.DataBaseWorkerService;
+import ru.samurayrus.smartmodulesystemai.databases.LlmResponseParser;
+import ru.samurayrus.smartmodulesystemai.databases.ParsedResponse;
 import ru.samurayrus.smartmodulesystemai.gui.GuiService;
 
 import java.util.List;
@@ -21,6 +23,7 @@ public class AiWorkerService {
     private GuiService guiService;
     private final DataBaseWorkerService dataBaseWorkerService;
     private final ObjectMapper mapper;
+    private final LlmResponseParser responseParser = new LlmResponseParser();
 
     @Autowired
     public AiWorkerService(DataBaseWorkerService dataBaseWorkerService) {
@@ -51,7 +54,7 @@ public class AiWorkerService {
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API
-                ResponseEntity<String> response = restTemplate.exchange("http://localhost:1234/v1/chat/completions", HttpMethod.POST, request, String.class);
+                ResponseEntity<String> response = restTemplate.exchange("http://192.168.0.105:1234/v1/chat/completions", HttpMethod.POST, request, String.class);
 
                 // Проверка статуса ответа
                 if (response.getStatusCode().is2xxSuccessful()) {
@@ -61,8 +64,7 @@ public class AiWorkerService {
                     guiService.addMessageToPane("assistant", content);
 
                     // Если нейронка написала сообщение с ! то выполняем работы с бд
-                    isComplete = !checkForSqlQueryInContentAndWork(content);
-
+                    isComplete = !checkForSqlQueryInContentAndWorkWithParser(content);
                     // Отправляем нейронке результат и ждем реакции
                     // <--
                 } else {
@@ -89,12 +91,29 @@ public class AiWorkerService {
         return (String) message.get("content");
     }
 
+    public boolean checkForSqlQueryInContentAndWorkWithParser(String content) {
+        ParsedResponse parsedResponse = responseParser.parseResponse(content);
+
+        if (parsedResponse.isHasSql()) {
+            guiService.addMessageToPane("tool", "[Запрос к бд]: " + parsedResponse.getSqlQuery());
+            String value;
+            try {
+                value = "[Ответ успешен! Sql запрос выполнен]: " + dataBaseWorkerService.executeSql(parsedResponse.getSqlQuery());
+            } catch (Exception e) {
+                value = "[Ошибка при выполнении запроса]" + e.getMessage();
+            }
+            guiService.addMessageToPane("tool", value);
+            return true;
+        }
+        return false;
+    }
+
     public boolean checkForSqlQueryInContentAndWork(String content) {
         if (content.startsWith("!")) {
             guiService.addMessageToPane("tool", "[Запрос к бд]: " + content);
             String value;
             try {
-                value = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(dataBaseWorkerService.executeSql(content.replaceFirst("!", " ")));
+                value = "[Ответ успешен! Sql запрос выполнен]: " + dataBaseWorkerService.executeSql(content.replaceFirst("!", " "));
             } catch (Exception e) {
                 value = "[Ошибка при выполнении запроса]" + e.getMessage();
             }
@@ -160,7 +179,7 @@ public class AiWorkerService {
                     guiService.addMessageToPane("tool", "[Запрос к бд]: " + content);
                     String value = "Ответ нет";
                     try {
-                        value = "[Ответ успешен! Sql запрос выполнен]" + processSqlResult(dataBaseWorkerService.executeSql(content.replaceFirst("!", " ")));
+                        value = "[Ответ успешен! Sql запрос выполнен]" + dataBaseWorkerService.executeSql(content.replaceFirst("!", " "));
                     } catch (Exception e) {
                         value = "[Ошибка при выполнении запроса]" + e.getMessage();
                     }
@@ -184,49 +203,5 @@ public class AiWorkerService {
         }
     }
 
-    public String processSqlResult(Object sqlResult) {
-        if (sqlResult == null) {
-            return "Нет данных";
-        }
-
-        if (sqlResult instanceof List) {
-            return formatListResult((List<?>) sqlResult);
-        } else if (sqlResult instanceof Map) {
-            return formatMapResult((Map<?, ?>) sqlResult);
-        } else if (sqlResult instanceof Integer || sqlResult instanceof Long) {
-            return "Операция успешна! Теперь можно отвечать пользователю или выполнять другие команды, которые необходимы для выполнения текущей задачи. Затронуто строк: " + sqlResult;
-        } else {
-            return sqlResult.toString();
-        }
-    }
-
-
-    private String formatListResult(List<?> list) {
-        if (list.isEmpty()) {
-            return "Нет данных";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        if (list.get(0) instanceof Map) {
-            // Результат с несколькими колонками
-            for (Object item : list) {
-                Map<?, ?> row = (Map<?, ?>) item;
-                sb.append(row.values().stream()
-                                .map(Object::toString)
-                                .collect(Collectors.joining(" | ")))
-                        .append("\n");
-            }
-        } else {
-            // Результат с одной колонкой
-            list.forEach(item -> sb.append(item.toString()).append("\n"));
-        }
-        return sb.toString();
-    }
-
-    private String formatMapResult(Map<?, ?> map) {
-        return map.entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue())
-                .collect(Collectors.joining("\n"));
-    }
 
 }
