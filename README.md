@@ -2,9 +2,9 @@
 ### Модульная система по взаимодействию с llm. 
 Добавляет функции работы с базой данных, проксирования запросов, интерфейс gui и другие
 
-##Описание функционала / GetStarted:
+## Описание функционала / GetStarted:
 
-additional.yml позволяет редактировать следующую часть:
+**additional.yml** позволяет редактировать следующую часть:
 ```yaml
 app:
   modules:
@@ -22,15 +22,15 @@ app:
 
 (Также другие технологические занчения, например server.port для прокси)
 
-В modules перечислены текущие активируемые модули для работы с llm.
-На данный момент доступны для настройки databaseworker и gui.
+В **modules** перечислены текущие активируемые модули для работы с llm.
+На данный момент доступны для настройки **databaseworker** и **gui**.
 
-###Database Worker
-Database Worker подключен к шине воркеров и перехватывает запросы от llm,
+### Database Worker
+ **Database Worker** подключен к шине воркеров и перехватывает запросы от llm,
 которые предназначены для выполнения sql на базе данных.
 Позволяет выполнять запросы в цикле с повторной обработкой llm.
 
-Например:
+**Например:**
 ```
 user: {Просит что-то сделать на бд}
 assistant: {Проговаривает что ей нужно сделать, чтобы при длинных цепочках задач не терять цель и пишет sql запрос,
@@ -38,43 +38,43 @@ assistant: {Проговаривает что ей нужно сделать, ч
 tool: {Увидел что есть обращение к бд через специальную конструкцию и выполняет sql, после чего возвращает ответ или ошибку со стектрейсом}
 assistant: {Обрабатывает ответ. Если ошибка, то пытается исправить или обращается к пользователю, если ничего ен получается.}
 ```
-Дальше либо повторные запросы через цикл, либо обращение к пользователю
+Дальше либо повторные запросы через **цикл**, либо обращение к пользователю
 
-###Gui Service
-Gui Service - позволяет общаться через интерфейс на swing. (разная окраска сообщений, мигание новых сообщений и тд).
+### Gui Service
+**Gui Service** - позволяет общаться через интерфейс на swing. (разная окраска сообщений, мигание новых сообщений и тд).
 На данный момент, дополнительно хранит в себе полный контекст, н ов будущем будет перенесено в отдельный сервис.
 
-###Proxy Service
-Proxy Service - неотключаемый модуль, который поднимается на заданном порту (по умолчанию 8089) 
-и отвечает за прокидывание запросов от внешних интерфейсов (например SillyTavern) к llm.
+### Proxy Service
+**Proxy Service** - неотключаемый модуль, который поднимается на заданном порту (по умолчанию 8089) 
+и отвечает за прокидывание запросов от внешних интерфейсов (например **SillyTavern**) к llm.
 В будущем добавится настройка этого модуля.
 
-####Текущее апи:
+#### Текущее апи:
 
-####@GetMapping("/v1/models") return ResponseEntity<String>
+#### @GetMapping("/v1/models") return ResponseEntity<String>
 
 (Этот эндпоинт покроет 99% всего взаимодействия с llm)
-####@PostMapping("/v1/chat/completions")  @RequestBody String prompt; return ResponseEntity<String>
+#### @PostMapping("/v1/chat/completions")  @RequestBody String prompt; return ResponseEntity<String>
 
-####@PostMapping("/v1/completions") @RequestBody String prompt; return ResponseEntity<String>
+#### @PostMapping("/v1/completions") @RequestBody String prompt; return ResponseEntity<String>
 
-####@PostMapping("/v1/embeddings") @RequestBody String prompt; return ResponseEntity<String>
+#### @PostMapping("/v1/embeddings") @RequestBody String prompt; return ResponseEntity<String>
 
 
-##Для разработчиков:
+## Для разработчиков:
 Пока нет поддержки внешних плагинов и есть возможность только писать внутренние модули, которые тут называются воркерами.
-1. Создать свой пакет в ru.samurayrus.smartmodulesystemai.workers
-2. Создать класс (желательно @Service) с имплементацией WorkerListener и подтягиванием WorkerEventDataBus через конструктор.
-3. Реализовать метод boolean callWorker(String content) и наполнить его полезной нагрузкой.
+1. Создать **свой** пакет в ru.samurayrus.smartmodulesystemai.workers
+2. Создать класс (желательно @Service) с имплементацией **WorkerListener** и подтягиванием WorkerEventDataBus через конструктор.
+3. Реализовать метод boolean **callWorker(String content)** и наполнить его полезной нагрузкой.
    На вход прилетает последнее сообщение, полученное от llm. Вы должны решить, нужно с ним что-нибудь делать или нет.
-   Чтобы сохранить запись в контекст, вы должны использовать вызов guiService.addMessageToPane("tool", message); 
+   Чтобы сохранить запись в контекст, вы должны использовать вызов **guiService.addMessageToPane("tool", message);** 
    Если вернуть true, то последний контекст отправится в llm и снова придет ответ.
    Если вернуть false- значит ответ от llm не требуется (может вы искали нужную структуру в сообщении и не нашли её, на примере DataBaseWorker)
 4. Вы должны добавить в yml к другим модулям свои параметры и параметр активации.
-5. Добавьте по аналогии к своиму воркеру @ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")
-6. В методе @PostConstruct вызовете workerEventDataBus.registerWorker(this), чтобы зарегестрировать свой воркер в шине.
+5. Добавьте по аналогии к своиму воркеру** @ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")**
+6. В методе @PostConstruct вызовете **workerEventDataBus.registerWorker(this)**, чтобы **зарегестрировать** свой воркер в шине.
 
-####Пример: 
+#### Пример: 
 ```java
 package ru.samurayrus.smartmodulesystemai.workers.your_package;
 @Service
@@ -105,7 +105,7 @@ public class YourWorker implements WorkerListener {
     }
 }
 ```
-Не забудь добавить в yml параметр включения!!!
+**Не забудь добавить в yml параметр включения!!!**
 ```yml
 app:
   modules:
@@ -119,4 +119,4 @@ app:
 Готово! Ваш модуль приступает к работе!
 Добавляйте по желанию свои модули, добавляйте функционал поиска в интернете, работы с кафкой, файловой системой или проектами в idea!
 
-####С ув, SamurayRus (:
+#### С ув, SamurayRus (:
