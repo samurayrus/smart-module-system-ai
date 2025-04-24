@@ -1,7 +1,14 @@
 app:
   modules:
-    databaseworker: true
-    gui: true
+    databaseworker:
+      enabled: false
+      datasource:
+        jdbc-url: jdbc:postgresql://xxx
+        username: xxx
+        password: xxx
+        driver-class-name: org.postgresql.Driver
+    gui:
+      enabled: true
   version: 0.1.0
 
 spring:
@@ -15,12 +22,6 @@ spring:
   #    import: file:./additional.yml
   #  main:
   #    web-application-type: reactive
-  datasource:
-    url: jdbc:postgresql://xxx
-    username: xxx
-    password: xxx
-    driver-class-name: org.postgresql.Driver
-
 
 server:
   port: 8089

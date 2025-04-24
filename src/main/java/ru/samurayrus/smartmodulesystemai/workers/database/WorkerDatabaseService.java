@@ -1,8 +1,10 @@
 package ru.samurayrus.smartmodulesystemai.workers.database;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,17 +19,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-public class WorkerDataBaseService implements WorkerListener {
+@ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")
+public class WorkerDatabaseService implements WorkerListener {
     private final JdbcTemplate jdbcTemplate;
     private final LlmSqlResponseParser responseParser;
     private final GuiService guiService;
     private final WorkerEventDataBus workerEventDataBus;
-    @Value("${app.modules.databaseworker}")
-    private boolean databaseWorkerIsEnabled;
 
     @Autowired
-    public WorkerDataBaseService(JdbcTemplate jdbcTemplate, @Lazy GuiService guiService, WorkerEventDataBus workerEventDataBus) {
+    public WorkerDatabaseService(@Qualifier("jdbc-template-master") JdbcTemplate jdbcTemplate, @Lazy GuiService guiService, WorkerEventDataBus workerEventDataBus) {
         this.jdbcTemplate = jdbcTemplate;
         this.guiService = guiService;
         this.workerEventDataBus = workerEventDataBus;
@@ -36,8 +38,8 @@ public class WorkerDataBaseService implements WorkerListener {
 
     @PostConstruct
     void registerWorker() {
-        if (databaseWorkerIsEnabled)
-            workerEventDataBus.registerWorker(this);
+        log.info("DataBaseWorker init registration as worker...");
+        workerEventDataBus.registerWorker(this);
     }
 
 

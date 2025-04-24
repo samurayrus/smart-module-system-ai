@@ -2,6 +2,7 @@ package ru.samurayrus.smartmodulesystemai.gui;
 
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
+@Slf4j
 @Service
 public class GuiService {
 
@@ -27,7 +29,7 @@ public class GuiService {
     private ChatRequest currentContext;
     private final GlobalWorkerService globalWorkerService;
     private JTextPane pane;
-    @Value("${app.modules.gui}")
+    @Value("${app.modules.gui.enabled}")
     private boolean guiIsEnabled;
 
     @Autowired
@@ -38,7 +40,9 @@ public class GuiService {
 
     @PostConstruct
     public void createGui() {
+        //TODO: Перелделать под ConditionalOnProperty и перенести контекст в отдельный сервис
         if (!guiIsEnabled) return;
+        log.info("GUIService is starting...");
         System.setProperty("java.awt.headless", "false");
 
         // Создаем главное окно с улучшенным дизайном
@@ -236,8 +240,8 @@ public class GuiService {
         }
     }
 
+    //наработки по передачи картинок в мультимодальные модели
     public String addMessageWithImage(String message, String image) {
-
         return
                 "[{\"type\":\"text\",\"text\":\"" + message + "\"},\n" +
                         "        ,{\"type\":\"image_url\",\n" +
@@ -289,12 +293,6 @@ public class GuiService {
         chatRequest.setMessages(new ArrayList<>());
         chatRequest.getMessages().add(systemMessage);
         chatRequest.getMessages().add(userFirstMessage);
-
-//        ChatMessage test = new ChatMessage();
-//        test.setRole("user");
-//        test.setContent(addMessageWithImage("Что думаешь об этой картинке? Что на ней изображено?", ""));
-//        chatRequest.getMessages().add(test);
-
         return chatRequest;
     }
 }
