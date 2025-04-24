@@ -35,3 +35,4 @@ smsai.log
 .mvn/wrapper/maven-wrapper.properties
 mvnw
 mvnw.cmd
+*.gz

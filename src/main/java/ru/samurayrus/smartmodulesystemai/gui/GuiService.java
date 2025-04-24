@@ -3,12 +3,11 @@ package ru.samurayrus.smartmodulesystemai.gui;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import ru.samurayrus.smartmodulesystemai.proxy.AiWorkerService;
-import ru.samurayrus.smartmodulesystemai.proxy.ChatMessage;
-import ru.samurayrus.smartmodulesystemai.proxy.ChatRequest;
-import ru.samurayrus.smartmodulesystemai.proxy.GptController;
+import ru.samurayrus.smartmodulesystemai.utils.ChatMessage;
+import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
+import ru.samurayrus.smartmodulesystemai.workers.GlobalWorkerService;
 
 import javax.swing.*;
 import javax.swing.text.Element;
@@ -26,19 +25,20 @@ public class GuiService {
 
     @Getter
     private ChatRequest currentContext;
-    public final GptController gptController;
-    private final AiWorkerService aiWorkerService;
+    private final GlobalWorkerService globalWorkerService;
     private JTextPane pane;
+    @Value("${app.modules.gui}")
+    private boolean guiIsEnabled;
 
     @Autowired
-    public GuiService(@Lazy GptController gptController, AiWorkerService aiWorkerService) {
-        this.gptController = gptController;
-        this.aiWorkerService = aiWorkerService;
+    public GuiService(GlobalWorkerService globalWorkerService) {
+        this.globalWorkerService = globalWorkerService;
         currentContext = makeFirstChatRequest();
     }
 
     @PostConstruct
     public void createGui() {
+        if (!guiIsEnabled) return;
         System.setProperty("java.awt.headless", "false");
 
         // Создаем главное окно с улучшенным дизайном
@@ -112,7 +112,7 @@ public class GuiService {
             inputField.setText("");
 
             new Thread(() -> {
-                aiWorkerService.workForAi(GuiService.this);
+                globalWorkerService.workForAi(GuiService.this);
             }).start();
         }
     }
@@ -152,7 +152,7 @@ public class GuiService {
 
                 // Запускаем анимацию через небольшой таймаут
                 Timer timer = new Timer(150, e -> {
-                    ((Timer)e.getSource()).stop();
+                    ((Timer) e.getSource()).stop();
                     animateNewMessage(doc, startPos);
                 });
                 timer.setRepeats(false);
@@ -186,9 +186,9 @@ public class GuiService {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (count >= blinkCount*2) {
+                    if (count >= blinkCount * 2) {
                         // Восстанавливаем оригинальный фон
-                        setElementBackground(doc, messageElem, new Color(0,0,0,0));
+                        setElementBackground(doc, messageElem, new Color(0, 0, 0, 0));
                         blinkTimer.stop();
                         return;
                     }
@@ -196,7 +196,7 @@ public class GuiService {
                     try {
                         Color bgColor = (count % 2 == 0) ?
                                 new Color(220, 220, 255) : // цвет мигания
-                                new Color(0,0,0,0);        // прозрачный
+                                new Color(0, 0, 0, 0);        // прозрачный
 
                         setElementBackground(doc, messageElem, bgColor);
                         count++;
@@ -234,6 +234,16 @@ public class GuiService {
             chatMessage.setContent(content);
             currentContext.getMessages().add(chatMessage);
         }
+    }
+
+    public String addMessageWithImage(String message, String image) {
+
+        return
+                "[{\"type\":\"text\",\"text\":\"" + message + "\"},\n" +
+                        "        ,{\"type\":\"image_url\",\n" +
+                        "         \"image_url\":{\"url\":\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEsAAAAvCAYAAACrKzemAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAQESURBVGhD7ZnrThpBGIa/RRE5CAsryEFAbapNvI72b2+pF2jSRFtaIx5QoFUQUDkj2H3HITV1F5Yyu6vtPgnRGRGdd7/zSO8/fHwgB0O4+FcHAzhizYAUjUYdNzSItLa25ohlEFvEcrsXyefzkyQ9rkejEd3dNenh4WU/N0vEWlhYoHh8jRQloorkZWst7u/v6fb2ji4vK1Sr1fjuy8FUsSBKJpOmWGyVFhcX+a4xOp0OFYtlurqq8B37MU0sWQ7R1tYmeb3LfGd24JX1ep3y+WMaDO75rn2YIlYiEaeNjQy5XGIqk3a7Q0dHeWo2W3zHHoTXWclkgrJZcUIBxLmdnbcUCPj5jj0IFQsBPJNZV2OV+Fp3eXmZuTUyqV0IOxUOkUoldTOdCAKBAEsYdiFMrEQiwQ5jJqjLotFVikQifMdahIjl8XjYIcZFppnAcqNRha+sRYhY+Oc9niW+Mp9gMGhLsBcilizLqlXpm9VwOGS10v7+F9bWaIGaqlqt0t7eZyqVyqwF0gPxMRyW+co65hbL6/WqmcrDV9qgCkcLA6GKxRIT70+63Q4dH59Rr9ejQuFCreC7/CfPwYPx+1+hZcH93G43X2njcv3OkHr1lyS5Zsqk0x6QGSyoGewT//6vgAvCJSa54WPz7GIHTKfXaWnpeXxD7+jz+Zj74T2hUGhiwsCEol6/Yc23Vczd7iSTaG2yE8Uyg16vT7ncd7UVavMd8xES4P8X5har3x9MzFxmMRoN1b/d5ytrmFssZC87xMJDsjJegbnFwtgE8UMP1E+tVnumg2HwN81qWi3rxzVzi4WsBDH0GAz6bBZ1eHjErHAajcYNHRx8pXL5B/tsLVCn6RW3ZiIkwDcaDc1CE7jdS7S+nqKbm1tVhBzVanVNEWB55+dFluHQa8ZiMd0MC9EhqtUImZTiULu771htpEez2VQt7JhNPfH+lZUA6+8wLoZljksANOSbm1ndQhdCX1yU1FeR71iHsLEyxibb228mVuHD4Yjd2sDFno6IIZ6ihNk8zO8PqGv+Aw3we7ncN1tm8kJn8FtbGxSPxycedgwsZPwy2ubA1WGd19f2XJMJiVljTk8L7DbGCLAm9IlGhUJ5AvezSyggVCxYCUYxuCgVCT738vKKjW7sRKhYALEEGa1aramH5JtzAIsqFM7p5OSM79iHKfeGY3Bln82mZ76NHoNgns+f2FKAamGqWAAxKZ1OqXVTdOrcC8Aa2+2WmjF/vqire2C6WE9BXbW6qrAaC9aG4hN0u13WMqFwrVQqL+KqXgtLxXrtCA/w/zJSMBh0LMsgktrPOWIZxHHDGZBkWXYsyyBSOBx2xDKI44YzIEUiEceyDOJY1gxIiqI4lmUIol+Kj6TZaMjptwAAAABJRU5ErkJggg==\",\n" +
+                        "         \"detail\":\"high\"}}]";
+
     }
 
     private ChatRequest makeFirstChatRequest() {
@@ -279,6 +289,12 @@ public class GuiService {
         chatRequest.setMessages(new ArrayList<>());
         chatRequest.getMessages().add(systemMessage);
         chatRequest.getMessages().add(userFirstMessage);
+
+//        ChatMessage test = new ChatMessage();
+//        test.setRole("user");
+//        test.setContent(addMessageWithImage("Что думаешь об этой картинке? Что на ней изображено?", ""));
+//        chatRequest.getMessages().add(test);
+
         return chatRequest;
     }
 }

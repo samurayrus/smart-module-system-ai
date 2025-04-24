@@ -1,27 +1,21 @@
-package ru.samurayrus.smartmodulesystemai.proxy;
+package ru.samurayrus.smartmodulesystemai.llmproxy;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import ru.samurayrus.smartmodulesystemai.gui.GuiService;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
 @CrossOrigin
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = "v1")
-public class GptController {
+public class LLMProxyController {
     JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public GptController() {
+    public LLMProxyController() {
     }
 
     @GetMapping("/models")

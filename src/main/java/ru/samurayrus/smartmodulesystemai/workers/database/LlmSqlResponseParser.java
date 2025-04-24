@@ -1,15 +1,15 @@
-package ru.samurayrus.smartmodulesystemai.databases;
+package ru.samurayrus.smartmodulesystemai.workers.database;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class LlmResponseParser {
+public class LlmSqlResponseParser {
 
     private static final Pattern SQL_PATTERN =
             Pattern.compile("<SQL_START>\\n(.+?)\\n<SQL_END>", Pattern.DOTALL);
 
-    public ParsedResponse parseResponse(String llmResponse) {
-        ParsedResponse response = new ParsedResponse();
+    public LlmSqlParsedResponse parseResponse(String llmResponse) {
+        LlmSqlParsedResponse response = new LlmSqlParsedResponse();
 
         // Ищем SQL запрос
         Matcher sqlMatcher = SQL_PATTERN.matcher(llmResponse);

@@ -1,28 +1,75 @@
-package ru.samurayrus.smartmodulesystemai.databases;
+package ru.samurayrus.smartmodulesystemai.workers.database;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.samurayrus.smartmodulesystemai.gui.GuiService;
+import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
+import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-public class DataBaseWorkerService {
+public class WorkerDataBaseService implements WorkerListener {
     private final JdbcTemplate jdbcTemplate;
-    private final LlmResponseParser responseParser;
+    private final LlmSqlResponseParser responseParser;
+    private final GuiService guiService;
+    private final WorkerEventDataBus workerEventDataBus;
+    @Value("${app.modules.databaseworker}")
+    private boolean databaseWorkerIsEnabled;
 
     @Autowired
-    public DataBaseWorkerService(JdbcTemplate jdbcTemplate) {
+    public WorkerDataBaseService(JdbcTemplate jdbcTemplate, @Lazy GuiService guiService, WorkerEventDataBus workerEventDataBus) {
         this.jdbcTemplate = jdbcTemplate;
-        this.responseParser = new LlmResponseParser();
+        this.guiService = guiService;
+        this.workerEventDataBus = workerEventDataBus;
+        this.responseParser = new LlmSqlResponseParser();
     }
 
-    public String executeSql(String sql) {
-        return processSqlResult(executeSqlAndReturnAllAnswers(sql));
+    @PostConstruct
+    void registerWorker() {
+        if (databaseWorkerIsEnabled)
+            workerEventDataBus.registerWorker(this);
+    }
+
+
+    /**
+     * Пока логика работы - если воркер определяет, что ему нужно дсделать работу, то он её делает,
+     * добавляя в процессе работы отчеты в контекст (и в интерфейс если он включен).
+     * После завершения работы, если llm нужно узнать результат работы, то нужно вернуть true, тогда
+     * глобальный контекст с новыми сообщениями от tool будет переотправлен llm.
+     * Если ответ от llm не нужен, то возвращаем false
+     *
+     * @param content
+     * @return
+     */
+    @Override
+    public boolean callWorker(String content) {
+        LlmSqlParsedResponse llmSqlParsedResponse = responseParser.parseResponse(content);
+
+        if (llmSqlParsedResponse.isHasSql()) {
+            guiService.addMessageToPane("tool", "[Запрос к бд]: " + llmSqlParsedResponse.getSqlQuery());
+            String value;
+            try {
+                value = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(executeSqlAndReturnAllAnswers(llmSqlParsedResponse.getSqlQuery()));
+            } catch (Exception e) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                value = "[Ошибка при выполнении запроса] StackTrace: \n " + sw;
+            }
+            guiService.addMessageToPane("tool", value);
+            return true;
+        }
+        return false;
     }
 
     private Object executeSqlAndReturnAllAnswers(String sql) {

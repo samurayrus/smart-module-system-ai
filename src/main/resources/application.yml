@@ -1,4 +1,7 @@
 app:
+  modules:
+    databaseworker: true
+    gui: true
   version: 0.1.0
 
 spring:
@@ -17,6 +20,7 @@ spring:
     username: xxx
     password: xxx
     driver-class-name: org.postgresql.Driver
+
 
 server:
   port: 8089
