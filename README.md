@@ -92,7 +92,6 @@ assistant: {Обрабатывает ответ. Если ошибка, то п�
 
 ### Gui Service
 **Gui Service** - позволяет общаться через интерфейс на swing. (разная окраска сообщений, мигание новых сообщений и тд).
-На данный момент, дополнительно хранит в себе полный контекст, н ов будущем будет перенесено в отдельный сервис.
 
 ### Proxy Service
 **Proxy Service** - неотключаемый модуль, который поднимается на заданном порту (по умолчанию 8089) 
@@ -110,19 +109,18 @@ assistant: {Обрабатывает ответ. Если ошибка, то п�
 
 #### @PostMapping("/v1/embeddings") @RequestBody String prompt; return ResponseEntity<String>
 
-
 ## Для разработчиков:
 Пока нет поддержки внешних плагинов и есть возможность только писать внутренние модули, которые тут называются воркерами.
 1. Создать **свой** пакет в ru.samurayrus.smartmodulesystemai.workers
 2. Создать класс (желательно @Service) с имплементацией **WorkerListener** и подтягиванием WorkerEventDataBus через конструктор.
 3. Реализовать метод boolean **callWorker(String content)** и наполнить его полезной нагрузкой.
    На вход прилетает последнее сообщение, полученное от llm. Вы должны решить, нужно с ним что-нибудь делать или нет.
-   Чтобы сохранить запись в контекст, вы должны использовать вызов **guiService.addMessageToPane("tool", message);** 
+   Чтобы сохранить запись в контекст, вы должны использовать вызов **contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", message);** 
    Если вернуть true, то последний контекст отправится в llm и снова придет ответ.
    Если вернуть false- значит ответ от llm не требуется (может вы искали нужную структуру в сообщении и не нашли её, на примере DataBaseWorker)
 4. Вы должны добавить в yml к другим модулям свои параметры и параметр активации.
 5. Добавьте по аналогии к своиму воркеру **@ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")**
-6. В методе @PostConstruct вызовете **workerEventDataBus.registerWorker(this)**, чтобы **зарегестрировать** свой воркер в шине.
+6. В методе @PostConstruct вызовете **workerEventDataBus.registerWorker(this)**, чтобы **зарегистрировать** свой воркер в шине.
 
 #### Пример: 
 ```java
@@ -131,19 +129,19 @@ package ru.samurayrus.smartmodulesystemai.workers.your_package;
 @ConditionalOnProperty(prefix = "app.modules.yourmodule", name = "enabled", havingValue = "true")
 public class YourWorker implements WorkerListener {
     private final WorkerEventDataBus workerEventDataBus;
-    private final GuiService guiService;
+    private final ContextStorage contextStorage;
     
     @Autowired
-    public YourWorker(WorkerEventDataBus workerEventDataBus, GuiService guiService) {
+    public YourWorker(WorkerEventDataBus workerEventDataBus, ContextStorage contextStorage) {
         this.workerEventDataBus = workerEventDataBus;
-        this.guiService = guiService;
+        this.contextStorage = contextStorage;
     }
 
     @Override
     public boolean callWorker(String content) {
         // Логика обработки контента. Можно посмотреть ан пример поиска тригера в LlmSqlResponseParser
         if (content.contains("<YOUR_TRIGGER>")) {
-            guiService.addMessageToPane("tool", "Результат работы модуля");
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "Результат работы модуля");
             return true;  // Отправить результат работы в LLM
         }
         return false;  // Пропустить обработку и не отправлять ответ llm
