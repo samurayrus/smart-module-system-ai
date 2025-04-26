@@ -1,0 +1,16 @@
+app:
+  llm:
+    model: gemma-3-12b-it-qat
+    url: http://localhost:1234/v1
+    need-auth: false
+    api-key:
+  modules:
+    databaseworker:
+      enabled: false
+      datasource:
+        jdbc-url: jdbc:postgresql://XXX
+        username: XXX
+        password: XXX
+        driver-class-name: org.postgresql.Driver
+    gui:
+      enabled: true
