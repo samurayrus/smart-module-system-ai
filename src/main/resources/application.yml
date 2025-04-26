@@ -6,7 +6,7 @@ app:
     api-key:
   modules:
     databaseworker:
-      enabled: true
+      enabled: false
       datasource:
         jdbc-url: jdbc:postgresql://XXX
         username: XXX
@@ -17,14 +17,15 @@ app:
   version: 0.1.0
 
 spring:
+  config:
+    import: file:./additional.yml
   application:
     name: SmartModuleSystemAi
   servlet:
     multipart:
       max-file-size: 80MB
       max-request-size: 80MB
-  #  config:
-  #    import: file:./additional.yml
+
   #  main:
   #    web-application-type: reactive
 
