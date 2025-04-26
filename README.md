@@ -51,9 +51,13 @@
 **additional.yml** позволяет редактировать следующую часть:
 ```yaml
 app:
+  llm:
+    url: http://localhost:1234/v1
+    need-auth: false
+    api-key:
   modules:
     databaseworker:
-      enabled: false
+      enabled: true
       datasource:
         jdbc-url: jdbc:postgresql://xxx
         username: xxx
