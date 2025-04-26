@@ -54,6 +54,7 @@
 ```yaml
 app:
   llm:
+    model: gemma-3-12b-it-qat
     url: http://localhost:1234/v1
     need-auth: false
     api-key:
