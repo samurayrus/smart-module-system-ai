@@ -3,20 +3,32 @@ package ru.samurayrus.smartmodulesystemai.gui;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
+import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
+import ru.samurayrus.smartmodulesystemai.utils.ChatMessage;
+import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 @Slf4j
 @Component
 @Getter
 public class ContextStorage {
     private String systemPrompt;
-    private String fullContext;
+    private ChatRequest currentContext;
+    private final LLMConfig llmConfig;
+    private final GuiService guiService;
+
+    public ContextStorage(LLMConfig llmConfig, @Lazy GuiService guiService) {
+        this.llmConfig = llmConfig;
+        this.guiService = guiService;
+    }
 
     @PostConstruct
     public void readFile() {
@@ -30,6 +42,42 @@ public class ContextStorage {
             systemPrompt = reservedSystemPrompt;
             log.info("Load reserved system prompt");
         }
+
+        currentContext = makeFirstChatRequest();
+    }
+
+    public void addMessageToContextAndMessagesListIfEnabled(final String user, final String content) {
+        if (user.equals("tool") || user.equals("assistant") || user.equals("user") || user.equals("system")) {
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setRole(user);
+            chatMessage.setContent(content);
+            currentContext.getMessages().add(chatMessage);
+        }
+
+        if(guiService.isGuiIsEnabled())
+            guiService.addMessageToPane(user, content);
+    }
+
+    private ChatRequest makeFirstChatRequest() {
+        ChatRequest chatRequest = new ChatRequest();
+        chatRequest.setMaxTokens(1500);
+        chatRequest.setFrequencyPenalty(0);
+        chatRequest.setModel(llmConfig.getModel());
+//        chatRequest.setModel("gemma-3-4b-it-8q");
+        chatRequest.setTemperature(1);
+        chatRequest.setStream(false);
+        chatRequest.setTopP(1);
+        ChatMessage systemMessage = new ChatMessage();
+        systemMessage.setRole("system");
+        systemMessage.setContent(getSystemPrompt());
+
+        ChatMessage userFirstMessage = new ChatMessage();
+        userFirstMessage.setRole("user");
+        userFirstMessage.setContent("[Start a new chat]");
+        chatRequest.setMessages(new ArrayList<>());
+        chatRequest.getMessages().add(systemMessage);
+        chatRequest.getMessages().add(userFirstMessage);
+        return chatRequest;
     }
 
     private static final String reservedSystemPrompt = """

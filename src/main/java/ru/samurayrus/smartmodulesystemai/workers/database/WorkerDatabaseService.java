@@ -5,11 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import ru.samurayrus.smartmodulesystemai.gui.GuiService;
+import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
@@ -25,13 +24,13 @@ import java.util.stream.Collectors;
 public class WorkerDatabaseService implements WorkerListener {
     private final JdbcTemplate jdbcTemplate;
     private final LlmSqlResponseParser responseParser;
-    private final GuiService guiService;
+    private final ContextStorage contextStorage;
     private final WorkerEventDataBus workerEventDataBus;
 
     @Autowired
-    public WorkerDatabaseService(@Qualifier("jdbc-template-master") JdbcTemplate jdbcTemplate, @Lazy GuiService guiService, WorkerEventDataBus workerEventDataBus) {
+    public WorkerDatabaseService(@Qualifier("jdbc-template-master") JdbcTemplate jdbcTemplate, ContextStorage contextStorage, WorkerEventDataBus workerEventDataBus) {
         this.jdbcTemplate = jdbcTemplate;
-        this.guiService = guiService;
+        this.contextStorage = contextStorage;
         this.workerEventDataBus = workerEventDataBus;
         this.responseParser = new LlmSqlResponseParser();
     }
@@ -58,7 +57,7 @@ public class WorkerDatabaseService implements WorkerListener {
         LlmSqlParsedResponse llmSqlParsedResponse = responseParser.parseResponse(content);
 
         if (llmSqlParsedResponse.isHasSql()) {
-            guiService.addMessageToPane("tool", "[Запрос к бд]: " + llmSqlParsedResponse.getSqlQuery());
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "[Запрос к бд]: " + llmSqlParsedResponse.getSqlQuery());
             String value;
             try {
                 value = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(executeSqlAndReturnAllAnswers(llmSqlParsedResponse.getSqlQuery()));
@@ -68,7 +67,7 @@ public class WorkerDatabaseService implements WorkerListener {
                 e.printStackTrace(pw);
                 value = "[Ошибка при выполнении запроса] StackTrace: \n " + sw;
             }
-            guiService.addMessageToPane("tool", value);
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value);
             return true;
         }
         return false;
