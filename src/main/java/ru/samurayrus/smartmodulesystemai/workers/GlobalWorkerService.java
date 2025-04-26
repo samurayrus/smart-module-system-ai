@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.gui.GuiService;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
@@ -20,37 +21,42 @@ public class GlobalWorkerService {
     private GuiService guiService;
     private final ObjectMapper mapper;
     private final WorkerEventDataBus workerEventDataBus;
+    private final LLMConfig llmConfig;
+    private final RestTemplate restTemplate;
+    private final HttpHeaders headers;
 
     @Autowired
-    public GlobalWorkerService(WorkerEventDataBus workerEventDataBus) {
+    public GlobalWorkerService(WorkerEventDataBus workerEventDataBus, LLMConfig llmConfig) {
         this.workerEventDataBus = workerEventDataBus;
-
+        this.llmConfig = llmConfig;
         mapper = new ObjectMapper();
+
+        restTemplate = new RestTemplate();
+        headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (llmConfig.isNeedAuth())
+            headers.setBearerAuth(llmConfig.getApiKey());
     }
 
     public void workForAi(GuiService guiService) {
         if (this.guiService == null)
             this.guiService = guiService;
 
-        System.out.println("---Запущена работа с ai--- \n ");
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        log.info("---GlobalWorkerService <--> llm --- \n ");
+
         try {
             boolean isComplete = false;
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
                 String fullPrompt = mapper.writeValueAsString(guiService.getCurrentContext());
-                System.out.println("---Промпт для работы: \n " + fullPrompt + "\n ---");
+                log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
 
 
                 ChatRequest chatRequest = mapper.readValue(fullPrompt, ChatRequest.class);
-//                guiService.addMessageToPane("worker-ai", fullPrompt);
-
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API
-                ResponseEntity<String> response = restTemplate.exchange("http://192.168.0.105:1234/v1/chat/completions", HttpMethod.POST, request, String.class);
+                ResponseEntity<String> response = restTemplate.exchange(llmConfig.getUrl() + "/chat/completions", HttpMethod.POST, request, String.class);
 
                 // Проверка статуса ответа
                 if (response.getStatusCode().is2xxSuccessful()) {

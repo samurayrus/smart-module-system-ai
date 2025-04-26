@@ -17,6 +17,7 @@ public class WorkerEventDataBus {
     }
 
     public boolean callActivityWorkers(String contentFromLlm) {
+        //TODO: возможно сделать через CompletableFuture, если архитектура будет исключать взаимодействие между разными воркерами
         Set<Boolean> workersReports = workerListeners.stream().map(x -> x.callWorker(contentFromLlm)).collect(Collectors.toSet());
         if (workersReports.contains(true))
             return true;

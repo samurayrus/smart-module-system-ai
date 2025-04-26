@@ -1,34 +1,46 @@
 package ru.samurayrus.smartmodulesystemai.llmproxy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
+@Slf4j
 @CrossOrigin
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = "v1")
 public class LLMProxyController {
-    JdbcTemplate jdbcTemplate;
+    private final LLMConfig llmConfig;
+    private final RestTemplate restTemplate;
+    private final HttpHeaders headers;
 
     @Autowired
-    public LLMProxyController() {
+    public LLMProxyController(LLMConfig llmConfig) {
+        this.llmConfig = llmConfig;
+
+        restTemplate = new RestTemplate();
+        headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //TODO: посмотреть на поведение и если что заменить на headers.set("Authorization", "Bearer " + apiToken);
+        if (llmConfig.isNeedAuth())
+            headers.setBearerAuth(llmConfig.getApiKey());
     }
 
     @GetMapping("/models")
     public ResponseEntity<String> getModels() {
-//        String mes = " { \"data\": [ { \"id\": \"gemma-3-4b-it-8q\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
-        String mes = " { \"data\": [ { \"id\": \"gemma-3-12b-it-qat\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
+        //TODO: сделать получение и выбор модели
+        String mes = " { \"data\": [ { \"id\": \"gemma-3-4b-it-8q\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
+//        String mes = " { \"data\": [ { \"id\": \"gemma-3-12b-it-qat\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
         return new ResponseEntity<>(mes, HttpStatus.OK);
     }
 
-
     /*
     example  body
-
     {"model": "gemma-3-4b-it-8q", "messages": [
     {"role": "system", "content": "Сегодня 20.04.2025"},
      {"role": "user", "content": "Как сделать так, чтобы ты запоминал предыдущие запросы?"}
@@ -38,42 +50,28 @@ public class LLMProxyController {
      */
     @PostMapping("/chat/completions")
     public ResponseEntity<String> getChatCompletions(@RequestBody String prompt) {
-        System.out.println("/chat/completions");
-
-        return new ResponseEntity<>(send(prompt.replaceFirst("\"stream\":true", "\"stream\":false"), "http://localhost:1234/v1/chat/completions"), HttpStatus.OK);
+        return new ResponseEntity<>(proxyRequest(prompt.replaceFirst("\"stream\":true", "\"stream\":false"), "/chat/completions"), HttpStatus.OK);
     }
 
     @PostMapping("/completions")
     public ResponseEntity<String> getCompletions(@RequestBody String prompt) {
-        System.out.println("/completions");
-        return new ResponseEntity<>(send(prompt, "http://localhost:1234/v1/completions"), HttpStatus.OK);
+        return new ResponseEntity<>(proxyRequest(prompt, "/completions"), HttpStatus.OK);
     }
 
     @PostMapping("/embeddings")
     public ResponseEntity<String> getEmb(@RequestBody String prompt) {
-        System.out.println("/embeddings");
-        return new ResponseEntity<>(send(prompt, "http://localhost:1234/v1/embeddings"), HttpStatus.OK);
+        return new ResponseEntity<>(proxyRequest(prompt, "/embeddings"), HttpStatus.OK);
     }
 
-    public String send(String prompt, String endpoint) {
-
-        System.out.println(endpoint + " \n prompt: \n" + prompt);
-
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        // Добавление заголовков, если необходимо (например, API токен)
-        //request.getHeaders().set("Authorization", "Bearer " + apiToken); // Пример авторизации
+    public String proxyRequest(String prompt, String endpoint) {
+        log.info(llmConfig.getUrl() + endpoint + " \n prompt: \n" + prompt);
 
         try {
-            ChatRequest chatRequest;
-            chatRequest = new ObjectMapper().readValue(prompt, ChatRequest.class);
-
+            ChatRequest chatRequest = new ObjectMapper().readValue(prompt, ChatRequest.class);
 
             HttpEntity<String> request = new HttpEntity<>(new ObjectMapper().writeValueAsString(chatRequest), headers);
             // Выполнение запроса к LLM API
-            ResponseEntity<String> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, String.class);
+            ResponseEntity<String> response = restTemplate.exchange(llmConfig.getUrl() + endpoint, HttpMethod.POST, request, String.class);
 
             // Проверка статуса ответа
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -82,8 +80,8 @@ public class LLMProxyController {
                 throw new Exception("LLM API returned an error: " + response.getStatusCode());
             }
         } catch (Exception e) {
-            System.err.println("Error during LLM API call: " + e.getMessage()); // Логирование ошибок
-            return "error 212";
+            log.error("Error during LLM API call ", e); // Логирование ошибок
+            return "Error 500";
         }
     }
 }
