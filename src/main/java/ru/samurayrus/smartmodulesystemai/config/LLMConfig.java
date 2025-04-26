@@ -15,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 @Getter
 @Setter
 public class LLMConfig {
+    private String model;
     private String url;
     private String apiKey;
     private boolean needAuth;

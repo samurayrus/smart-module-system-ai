@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.utils.ChatMessage;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 import ru.samurayrus.smartmodulesystemai.workers.GlobalWorkerService;
@@ -31,10 +32,12 @@ public class GuiService {
     private JTextPane pane;
     @Value("${app.modules.gui.enabled}")
     private boolean guiIsEnabled;
+    private LLMConfig llmConfig;
 
     @Autowired
-    public GuiService(GlobalWorkerService globalWorkerService) {
+    public GuiService(GlobalWorkerService globalWorkerService, LLMConfig llmConfig) {
         this.globalWorkerService = globalWorkerService;
+        this.llmConfig = llmConfig;
         currentContext = makeFirstChatRequest();
     }
 
@@ -254,7 +257,7 @@ public class GuiService {
         ChatRequest chatRequest = new ChatRequest();
         chatRequest.setMaxTokens(1500);
         chatRequest.setFrequencyPenalty(0);
-        chatRequest.setModel("gemma-3-12b-it-qat");
+        chatRequest.setModel(llmConfig.getModel());
 //        chatRequest.setModel("gemma-3-4b-it-8q");
         chatRequest.setTemperature(1);
         chatRequest.setStream(false);
