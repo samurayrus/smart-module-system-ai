@@ -9,7 +9,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
-import ru.samurayrus.smartmodulesystemai.gui.GuiService;
+import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
 import java.util.List;
@@ -18,17 +18,18 @@ import java.util.Map;
 @Slf4j
 @Service
 public class GlobalWorkerService {
-    private GuiService guiService;
     private final ObjectMapper mapper;
     private final WorkerEventDataBus workerEventDataBus;
     private final LLMConfig llmConfig;
     private final RestTemplate restTemplate;
     private final HttpHeaders headers;
+    private final ContextStorage contextStorage;
 
     @Autowired
-    public GlobalWorkerService(WorkerEventDataBus workerEventDataBus, LLMConfig llmConfig) {
+    public GlobalWorkerService(WorkerEventDataBus workerEventDataBus, LLMConfig llmConfig, ContextStorage contextStorage) {
         this.workerEventDataBus = workerEventDataBus;
         this.llmConfig = llmConfig;
+        this.contextStorage = contextStorage;
         mapper = new ObjectMapper();
 
         restTemplate = new RestTemplate();
@@ -38,17 +39,14 @@ public class GlobalWorkerService {
             headers.setBearerAuth(llmConfig.getApiKey());
     }
 
-    public void workForAi(GuiService guiService) {
-        if (this.guiService == null)
-            this.guiService = guiService;
-
+    public void workForAi() {
         log.info("---GlobalWorkerService <--> llm --- \n ");
 
         try {
             boolean isComplete = false;
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
-                String fullPrompt = mapper.writeValueAsString(guiService.getCurrentContext());
+                String fullPrompt = mapper.writeValueAsString(contextStorage.getCurrentContext());
                 log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
 
 
@@ -63,8 +61,7 @@ public class GlobalWorkerService {
 
                     //  Получаем content, а т.е ответ от нейронки
                     String content = getContentFromJsonFromAi(response.getBody());
-                    guiService.addMessageToPane("assistant", content);
-
+                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", content);
                     // Отправляем сообщение от нейронки активным воркерам и либо отправляем результат нейронке, либо отстанавливаем работу
                     isComplete = !callWorkersIfNeed(content);
                     // Отправляем нейронке результат и ждем реакции при повторе
@@ -75,7 +72,7 @@ public class GlobalWorkerService {
             }
         } catch (Exception e) {
             log.error("Ошибка при работе с llm", e);
-            guiService.addMessageToPane("worker-ai", "Ошибка при работе с llm - " + e.getMessage());
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("worker-ai", "Ошибка при работе с llm - " + e.getMessage());
         }
     }
 
