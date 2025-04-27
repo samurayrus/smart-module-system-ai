@@ -5,6 +5,8 @@ app:
     need-auth: false
     api-key:
   modules:
+    cmd-worker:
+      enabled: true
     databaseworker:
       enabled: false
       datasource:
