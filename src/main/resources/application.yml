@@ -8,6 +8,8 @@ app:
   modules:
     file-editor-worker:
       enabled: true
+    cmd-worker:
+      enabled: true
     databaseworker:
       enabled: false
       datasource:

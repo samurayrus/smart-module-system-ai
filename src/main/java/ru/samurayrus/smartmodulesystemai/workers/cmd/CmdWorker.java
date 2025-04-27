@@ -14,7 +14,7 @@ import java.util.Arrays;
 
 @Slf4j
 @Service
-@ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "app.modules.cmd-worker", name = "enabled", havingValue = "true")
 public class CmdWorker implements WorkerListener {
     private final WorkerEventDataBus workerEventDataBus;
     private final ContextStorage contextStorage;
