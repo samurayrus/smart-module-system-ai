@@ -5,6 +5,8 @@ app:
     need-auth: true
     api-key:
   modules:
+    file-editor-worker:
+      enabled: true
     cmd-worker:
       enabled: true
     databaseworker:

@@ -24,6 +24,7 @@ public class ContextStorage {
     private ChatRequest currentContext;
     private final LLMConfig llmConfig;
     private final GuiService guiService;
+    private int tokens =0;
 
     public ContextStorage(LLMConfig llmConfig, @Lazy GuiService guiService) {
         this.llmConfig = llmConfig;
@@ -37,12 +38,15 @@ public class ContextStorage {
             String data = new String(dataAsBytes, StandardCharsets.UTF_8);
             systemPrompt = data;
             log.info("SystemPrompt was loaded and have length - " + systemPrompt.length());
+            tokens+=systemPrompt.length()/4;
+            System.out.println("Текущие токены:" + tokens);
         } catch (IOException e) {
             log.error("Error load system prompt from file", e);
             systemPrompt = reservedSystemPrompt;
             log.info("Load reserved system prompt");
         }
 
+        log.info("Loaded model: " + llmConfig.getModel());
         currentContext = makeFirstChatRequest();
     }
 
@@ -52,6 +56,8 @@ public class ContextStorage {
             chatMessage.setRole(user);
             chatMessage.setContent(content);
             currentContext.getMessages().add(chatMessage);
+            tokens+=content.length()/4;
+            System.out.println("Текущие токены:" + tokens);
         }
 
         if(guiService.isGuiIsEnabled())
