@@ -10,6 +10,7 @@ import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
 import java.io.*;
+import java.util.Arrays;
 
 @Slf4j
 @Service
@@ -37,16 +38,32 @@ public class CmdWorker implements WorkerListener {
 
         if (llmCmdParsedResponse.isHasCmd()) {
             contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "[Запрос к CMD]: " + llmCmdParsedResponse.getCmdQuery());
-            String value;
+            log.info(llmCmdParsedResponse.getCmdQuery());
+            //TODO: решить, будут ли доступны многострочные вызовы или нет
+            String[] queries = new String[1];
+            queries[0] = llmCmdParsedResponse.getCmdQuery();
+            System.out.println("Список вызовов: " + queries.length);
+            StringBuilder value = new StringBuilder();
+            
             try {
-                value = "[Ответ успешен! CMD запрос выполнен]: " +cmdGo(llmCmdParsedResponse.getCmdQuery());
+//                value = "[CMD вернул ответ]: " +cmdGo(llmCmdParsedResponse.getCmdQuery());
+                value.append("[CMD вернул]:");
+                Arrays.stream(queries).forEach(x-> {
+                    try {
+                        System.out.println("Выполнение отдельного запроса: " + x);
+                        value.append(cmdGo(x));
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                value = "[Ошибка при выполнении CMD запроса] StackTrace: \n " + sw;
+                value.append( "[Ошибка при выполнении CMD запроса] StackTrace: \n " + sw);
             }
-            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value);
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value.toString());
             return true;
         }
         return false;
@@ -58,7 +75,7 @@ public class CmdWorker implements WorkerListener {
         builder.redirectErrorStream(true);
         Process p = builder.start();
         StringBuilder stringBuilder = new StringBuilder();
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(),"866"))){
             String line;
 
             while (true) {

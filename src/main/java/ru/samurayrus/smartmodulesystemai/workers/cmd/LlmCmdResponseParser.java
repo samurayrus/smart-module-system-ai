@@ -13,14 +13,15 @@ public class LlmCmdResponseParser {
     public LlmCmdParsedResponse parseResponse(String llmResponse) {
         LlmCmdParsedResponse response = new LlmCmdParsedResponse();
 
-        // Ищем SQL запрос
-        Matcher sqlMatcher = CMD_PATTERN.matcher(llmResponse);
-        if (sqlMatcher.find()) {
-            response.setCmdQuery(sqlMatcher.group(1).trim());
+        Matcher cmdMatcher = CMD_PATTERN.matcher(llmResponse);
+        if (cmdMatcher.find()) {
+            // Получаем команду и удаляем все переносы строк ( Чтобы в CMD не летели многострочные запросы, которые ломают вызовы)
+            String cmd = cmdMatcher.group(1).replaceAll("\\s+", " ");//.trim();
+            response.setCmdQuery(cmd);
             response.setHasCmd(true);
 
-            // Вырезаем SQL часть чтобы получить только комментарии
-            response.setUserMessage(llmResponse.replace(sqlMatcher.group(0), "").trim());
+            // Вырезаем командную часть чтобы получить только комментарии
+            response.setUserMessage(llmResponse.replace(cmdMatcher.group(0), "").trim());
         } else {
             response.setHasCmd(false);
             response.setUserMessage(llmResponse.trim());
@@ -28,5 +29,4 @@ public class LlmCmdResponseParser {
 
         return response;
     }
-
 }

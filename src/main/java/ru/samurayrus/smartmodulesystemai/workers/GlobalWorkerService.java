@@ -40,14 +40,14 @@ public class GlobalWorkerService {
     }
 
     public void workForAi() {
-        log.info("---GlobalWorkerService <--> llm --- \n ");
+//        log.info("---GlobalWorkerService <--> llm --- \n ");
 
         try {
             boolean isComplete = false;
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
                 String fullPrompt = mapper.writeValueAsString(contextStorage.getCurrentContext());
-                log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
+//                log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
 
 
                 ChatRequest chatRequest = mapper.readValue(fullPrompt, ChatRequest.class);
