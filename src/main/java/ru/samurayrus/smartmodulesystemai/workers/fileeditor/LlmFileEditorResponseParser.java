@@ -18,6 +18,8 @@ public class LlmFileEditorResponseParser {
                 response.setFileEditorEnum(fileEditorEnum);
                 response.setFilePath(filePathExtractor(cmd));
                 response.setText(fileTextExtractor(cmd));
+                response.setNumStart(findNumStart(cmd));
+                response.setNumEnd(findNumEnd(cmd));
                 // Вырезаем командную часть чтобы получить только комментарии
                 response.setUserMessage(llmResponse.replace(cmdMatcher.group(0), "").trim());
                 break;
@@ -47,5 +49,23 @@ public class LlmFileEditorResponseParser {
             return cmdMatcher.group(1);
         }
         return "";
+    }
+
+    Pattern findNumStartPattern = Pattern.compile("<NUM_START>(.+?)</NUM_START>", Pattern.DOTALL);
+    private int findNumStart(String message){
+        Matcher cmdMatcher = findNumStartPattern.matcher(message);
+        if(cmdMatcher.find()){
+            return Integer.parseInt(cmdMatcher.group(1));
+        }
+        return -1;
+    }
+
+    Pattern findNumEndPattern = Pattern.compile("<NUM_END>(.+?)</NUM_END>", Pattern.DOTALL);
+    private int findNumEnd(String message){
+        Matcher cmdMatcher = findNumEndPattern.matcher(message);
+        if(cmdMatcher.find()){
+            return Integer.parseInt(cmdMatcher.group(1));
+        }
+        return -1;
     }
 }

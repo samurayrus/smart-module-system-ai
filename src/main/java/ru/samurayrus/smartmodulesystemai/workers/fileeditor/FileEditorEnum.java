@@ -7,7 +7,8 @@ public enum FileEditorEnum {
     SET_TEXT_TO_FILE(Pattern.compile("<SET_TEXT_TO_FILE>\\n(.+?)\\n</SET_TEXT_TO_FILE>", Pattern.DOTALL)),
     PUT_TEXT_TO_FILE(Pattern.compile("<PUT_TEXT_TO_FILE>\\n(.+?)\\n</PUT_TEXT_TO_FILE>", Pattern.DOTALL)),
     CREATE_FOLDER(Pattern.compile("<CREATE_FOLDER>\\n(.+?)\\n</CREATE_FOLDER>", Pattern.DOTALL)),
-    READ_FILE(Pattern.compile("<READ_FILE>\\n(.+?)\\n</READ_FILE>", Pattern.DOTALL));
+    READ_FILE(Pattern.compile("<READ_FILE>\\n(.+?)\\n</READ_FILE>", Pattern.DOTALL)),
+    GET_ALL_FILES_BY_DIR(Pattern.compile("<GET_ALL_FILES_BY_DIR>\\n(.+?)\\n</GET_ALL_FILES_BY_DIR>", Pattern.DOTALL));
 
     private final Pattern currentPattern;
 

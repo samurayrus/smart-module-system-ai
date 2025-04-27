@@ -13,4 +13,6 @@ public class LlmFileEditorParsedResponse {
     private FileEditorEnum fileEditorEnum;
     private String filePath;
     private String text;
+    private int numStart;
+    private int numEnd;
 }

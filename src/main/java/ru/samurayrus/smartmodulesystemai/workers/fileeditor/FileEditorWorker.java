@@ -13,7 +13,10 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,30 +36,6 @@ public class FileEditorWorker implements WorkerListener {
     void registerWorker() {
         log.info("File_WORKER init registration as worker...");
         workerEventDataBus.registerWorker(this);
-//        ChatMessage sysPromNew = new ChatMessage();
-//        sysPromNew.setRole("system");
-//        sysPromNew.setContent(
-//                """
-//                        ТЕБЕ ДОСТУПНЫ ФУНКЦИИ ЧТЕНИЯ/ИЗМЕНЕНИЯ/СОЗДАНИЯ ФАЙЛОВ.
-//                        ЧТОБЫ ПРОЧИТАТЬ ФАЙЛ ТЫ ДОЛЖНА ИСПОЛЬЗОВАТЬ СТРУКТУРУ:
-//                        <READ_FILE>
-//                        <FILE_PATH> ТУТ ТОЛЬКО ПОЛНЫЙ ПУТЬ ДО ФАЙЛА  например D:\\ProjectEditor/test.txt </FILE_PATH>
-//                        </READ_FILE>
-//                        ЧТОБЫ СОЗДАТЬ ФАЙЛ ТЫ ДОЛЖНА ИСПОЛЬЗОВАТЬ:
-//                        <CREATE_FILE>
-//                        <FILE_PATH> ТУТ ТОЛЬКО ПОЛНЫЙ ПУТЬ ДО ФАЙЛА  например D:\\ProjectEditor/test.txt </FILE_PATH>
-//                        </CREATE_FILE>
-//                        ЧТОБЫ ЗАПИСАТЬ ИЛИ ПЕРЕЗАПИСАТЬ ФАЙЛ ТЫ ДОЛЖНА ИСПОЛЬЗОВАТЬ:
-//                        <SET_TEXT_TO_FILE>
-//                        <FILE_PATH>  ТУТ ТОЛЬКО ПОЛНЫЙ ПУТЬ ДО ФАЙЛА например D:\\ProjectEditor/test.txt </FILE_PATH>
-//                        <TEXT>ТУТ ТЕКСТ КОТОРЫЙ ХОЧЕШЬ ЗАПИСАТЬ В ФАЙЛ</TEXT>
-//                        </SET_TEXT_TO_FILE>
-//
-//                        ВНУТРИ ТЭГОВ НЕ ПИШИ СВОИ КОММЕНТАРИИ
-//                        ИСПОЛЬЗУЙ ТОЛЬКО ОДНО ДЕЙСТВИЕ ЗА ОДНО СООБЩЕНИЕ
-//                        ТЫ МОЖЕШЬ ЛИБО СОЗДАТЬ ФАЙЛ, ЛИБО ПРОЧИТАТЬ, ЛИБО ЗАПИСАТЬ ЗА ОДНО СООБЩЕНИЕ
-//                        """
-//        );
     }
 
     @Override
@@ -64,6 +43,7 @@ public class FileEditorWorker implements WorkerListener {
         LlmFileEditorParsedResponse response = llmFileEditorResponseParser.parseResponse(content);
 
         if (response.isHasFileEditor()) {
+            response.setText(response.getText().replaceAll("\\n", "\n"));
             contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "[Запрос к FILE_EDITOR. Режим - " + response.getFileEditorEnum().name() + "]: " + response.getFilePath() + " " + response.getText());
             log.info("FILE_EDITOR -" + response.getFileEditorEnum() + ": \n" + response.getFilePath() + " " + response.getText());
             String value = "[FILE_EDITOR вернул]:[EMPTY]";
@@ -72,8 +52,9 @@ public class FileEditorWorker implements WorkerListener {
                     case READ_FILE -> value = "[FILE_EDITOR вернул ответ]: " + getTextFromFile(response.getFilePath());
                     case CREATE_FILE -> value = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath());
 //                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
-//                    case PUT_TEXT_TO_FILE -> value = "[CMD вернул ответ]: " +putTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
+                    case PUT_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
                     case SET_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + addTextToFile(response.getFilePath(), response.getText());
+                    case GET_ALL_FILES_BY_DIR -> value = "[FILE_EDITOR вернул ответ]: " + getAllFilesFromDirectory(response.getFilePath());
                 }
 
             } catch (Exception e) {
@@ -103,8 +84,73 @@ public class FileEditorWorker implements WorkerListener {
         }
     }
 
-    public String putTextToFile(String filePath, int numBegin, int numEnd, String text) {
-        return "";
+//    @PostConstruct
+//    public void test() throws IOException {
+//        addTextToFile("D:\\ProjectEditor\\test.txt","Привет! \n Это тест переноса строк! \n Как делак?");
+//        putTextToFile("D:\\ProjectEditor\\test.txt",1,1,"Замнил Привет на \n ХАЛЛОУ");
+//    }
+
+    public String getAllFilesFromDirectory(String path){
+        List<String> filePaths = new ArrayList<>();
+        File root = new File(path);
+
+        if (!root.exists()) {
+            throw new IllegalArgumentException("Path does not exist: " + path);
+        }
+
+        collectFiles(root, filePaths);
+        return String.join("\n", filePaths);
+    }
+
+    private void collectFiles(File file, List<String> filePaths) {
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    collectFiles(f, filePaths);
+                }
+            }
+        } else {
+            filePaths.add(file.getAbsolutePath());
+        }
+    }
+
+    public String putTextToFile(String filePath, int numBegin, int numEnd, String text) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            List<String> lines = new ArrayList<>();
+            String line;
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+
+            if (numBegin < 0 || numEnd >= lines.size() || numBegin > numEnd) {
+                return "[Ошибка: Некорректные номера строк!]";
+            }
+
+            List<String> updatedLines = new ArrayList<>();
+            boolean addedText = false;
+            for (int i = 0; i < lines.size(); i++) {
+                if (i >= numBegin && i <= numEnd) {
+                    if (addedText) continue;
+                    addedText = true;
+                    updatedLines.add(text);
+                } else {
+                    updatedLines.add(lines.get(i));
+                }
+            }
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+                for (String updatedLine : updatedLines) {
+                    bw.write(updatedLine);
+                    bw.newLine(); // Добавляем новую строку после каждой строки
+                }
+            }
+
+            return "[Текст успешно заменен в файле " + filePath + "!]";
+
+        } catch (NumberFormatException e) {
+            return "[Ошибка: Некорректные номера строк (не числа)!]";
+        }
     }
 
     public String createFile(String filePath) throws IOException {
