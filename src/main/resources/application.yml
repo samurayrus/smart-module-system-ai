@@ -6,6 +6,8 @@ app:
     need-auth: false
     api-key:
   modules:
+    file-editor-worker:
+      enabled: true
     databaseworker:
       enabled: false
       datasource:

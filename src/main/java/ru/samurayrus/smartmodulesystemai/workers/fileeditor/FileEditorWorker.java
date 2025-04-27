@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "app.modules.file-editor-worker", name = "enabled", havingValue = "true")
 public class FileEditorWorker implements WorkerListener {
     private final WorkerEventDataBus workerEventDataBus;
     private final ContextStorage contextStorage;
@@ -83,12 +83,6 @@ public class FileEditorWorker implements WorkerListener {
             return sb.toString();
         }
     }
-
-//    @PostConstruct
-//    public void test() throws IOException {
-//        addTextToFile("D:\\ProjectEditor\\test.txt","Привет! \n Это тест переноса строк! \n Как делак?");
-//        putTextToFile("D:\\ProjectEditor\\test.txt",1,1,"Замнил Привет на \n ХАЛЛОУ");
-//    }
 
     public String getAllFilesFromDirectory(String path){
         List<String> filePaths = new ArrayList<>();
