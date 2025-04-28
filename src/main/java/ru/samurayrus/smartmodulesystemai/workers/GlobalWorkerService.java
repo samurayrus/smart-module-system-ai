@@ -46,11 +46,12 @@ public class GlobalWorkerService {
             boolean isComplete = false;
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
-                String fullPrompt = mapper.writeValueAsString(contextStorage.getCurrentContext());
+//                String fullPrompt = mapper.writeValueAsString(contextStorage.getCurrentContext());
 //                log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
 
 
-                ChatRequest chatRequest = mapper.readValue(fullPrompt, ChatRequest.class);
+                ChatRequest chatRequest = contextStorage.getCurrentContext();
+                System.out.println(mapper.writeValueAsString(chatRequest));
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API

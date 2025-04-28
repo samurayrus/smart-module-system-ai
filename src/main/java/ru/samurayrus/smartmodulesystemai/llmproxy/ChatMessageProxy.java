@@ -1,11 +1,11 @@
-package ru.samurayrus.smartmodulesystemai.utils;
+package ru.samurayrus.smartmodulesystemai.llmproxy;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class ChatMessage {
+public class ChatMessageProxy {
     private String role;
     private Object content;
     //Добавить поддержку мультимодальности. Массив и несколько типов данных
