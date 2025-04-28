@@ -10,10 +10,13 @@ import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.utils.*;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 
 @Slf4j
 @Component
@@ -51,7 +54,9 @@ public class ContextStorage {
 
     public void addMessageToContextAndMessagesListIfEnabled(final String user, final String content) {
         if(content.contains("КАРТИНКА")) {
+            try {
             sendMessageWithImage();
+            }catch (Exception e){e.printStackTrace();}
             return;
         }
 
@@ -69,11 +74,13 @@ public class ContextStorage {
     }
 
 
-    public void sendMessageWithImage(){
+    public void sendMessageWithImage() throws IOException {
         ImageUrl imageUrl = new ImageUrl();
-        imageUrl.setUrl("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAAUCAIAAAC/CtwvAAAC7ElEQVRYCe2V3U/TYBSH+Zeebs5tgQXHlqlbYQgirWQdTL63wcbYuMB4o8aPcGMUCV6Ik6ASITHGeCER0DEQ+KNMu7Zb2VxUZszQXp28Pef0POd33tMW4cw9LWeOSPiP1AyaNlIloL+H1woB+IvsDUYaibA9Qfh0SPgopJB/N0kjkRqlzB9BAm5N8KKXxTjFDBsKIZs+S7LMrsL8MIVZPo4w6CqfH88Jx3PCUZyg0WBaeZdjzvCx+9hJE9FS4WA+ytYMxRSrEn4thADFHKU8erYxvKVXdmYVtjIU0+Sv6Yc1m1hbpRLS7gRTXrr95FO86iqXXkzzMEi4nXvj7EZxap90OAi4CXVjQYI7CV526rFXJQoKdtQnFmFnmBEvXR0sTZEXVR/shNoQRQppEm2IbYhu3V+S+TLKjXbCHSwb/r+MtN6tl9LXTzFaRjqM4dAw7JfYn6JPs0vZz4csSIIg9PVzMIRLw7idYPmynqeyGklmd6B8Xj14wN0kTwK6j9jLwWDZvzKVIPzgv1RSaSWkhwV7OIqp3RIEQZYpRPRznMSDlhmoRrJ18DnDsA3cbGZJOvRYr498nEKGg1kOshQV/VzVqmo9AAvTHGY1Z83frOcEz2mRqtNVI2HjcZpHPtq7+DaKR+sLNhZnWOvlikedrrjyU0hLojaKpYE07md1DfXuUuXg7RldrFSpOl0NJBiN8kkiGWM9bMjrZiNHSlMMGBywIvn5al3ipcF7Zgyty0m3u6zqiTLqIW2PM+0l7Cc/bVkP5uCZuQCPy1gPCa67Vdtj17/qDLIf580MN1sNJE2lt/2qSrLI6pQVycOHLPf9qiYhpxoCSDJ7k4xfoNPL0yRmu80aTKMe0kovi5PsZdhUECuWeE2khWnr8s3xwGsAOMhnOUrQWbFIfBdZS6rJ3w+RkqxIMDag3sDjOcG8Y5wjay5xiYBRj0liGvWQnhvrwfRuCqMekrnxmoLELPKfQTKJm9GorVIzkpg1fwfYKLfuKkbhjAAAAABJRU5ErkJggg==");
+        imageUrl.setUrl("data:image/png;base64,"+ Base64.getEncoder().encodeToString(new FileInputStream("D:\\Downloads/107a2a9d-14fd-5197-8174-5261caf8d628.png").readAllBytes()));
+//        imageUrl.setUrl("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAAUCAIAAAC/CtwvAAAC7ElEQVRYCe2V3U/TYBSH+Zeebs5tgQXHlqlbYQgirWQdTL63wcbYuMB4o8aPcGMUCV6Ik6ASITHGeCER0DEQ+KNMu7Zb2VxUZszQXp28Pef0POd33tMW4cw9LWeOSPiP1AyaNlIloL+H1woB+IvsDUYaibA9Qfh0SPgopJB/N0kjkRqlzB9BAm5N8KKXxTjFDBsKIZs+S7LMrsL8MIVZPo4w6CqfH88Jx3PCUZyg0WBaeZdjzvCx+9hJE9FS4WA+ytYMxRSrEn4thADFHKU8erYxvKVXdmYVtjIU0+Sv6Yc1m1hbpRLS7gRTXrr95FO86iqXXkzzMEi4nXvj7EZxap90OAi4CXVjQYI7CV526rFXJQoKdtQnFmFnmBEvXR0sTZEXVR/shNoQRQppEm2IbYhu3V+S+TLKjXbCHSwb/r+MtN6tl9LXTzFaRjqM4dAw7JfYn6JPs0vZz4csSIIg9PVzMIRLw7idYPmynqeyGklmd6B8Xj14wN0kTwK6j9jLwWDZvzKVIPzgv1RSaSWkhwV7OIqp3RIEQZYpRPRznMSDlhmoRrJ18DnDsA3cbGZJOvRYr498nEKGg1kOshQV/VzVqmo9AAvTHGY1Z83frOcEz2mRqtNVI2HjcZpHPtq7+DaKR+sLNhZnWOvlikedrrjyU0hLojaKpYE07md1DfXuUuXg7RldrFSpOl0NJBiN8kkiGWM9bMjrZiNHSlMMGBywIvn5al3ipcF7Zgyty0m3u6zqiTLqIW2PM+0l7Cc/bVkP5uCZuQCPy1gPCa67Vdtj17/qDLIf580MN1sNJE2lt/2qSrLI6pQVycOHLPf9qiYhpxoCSDJ7k4xfoNPL0yRmu80aTKMe0kovi5PsZdhUECuWeE2khWnr8s3xwGsAOMhnOUrQWbFIfBdZS6rJ3w+RkqxIMDag3sDjOcG8Y5wjay5xiYBRj0liGvWQnhvrwfRuCqMekrnxmoLELPKfQTKJm9GorVIzkpg1fwfYKLfuKkbhjAAAAABJRU5ErkJggg==");
         imageUrl.setDetail("high");
 
+        System.out.println(imageUrl.getUrl());
         ImageContent imageContent = new ImageContent();
         imageContent.setImage_url(imageUrl);
         imageContent.setType("image_url");
