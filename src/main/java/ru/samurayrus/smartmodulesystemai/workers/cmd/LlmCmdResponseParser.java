@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 public class LlmCmdResponseParser {
 
     private static final Pattern CMD_PATTERN =
-            Pattern.compile("<CMD_START>\\n(.+?)\\n<CMD_END>", Pattern.DOTALL);
+            Pattern.compile("<CMD_START>(.+?)<CMD_END>", Pattern.DOTALL);
 
     public LlmCmdParsedResponse parseResponse(String llmResponse) {
         LlmCmdParsedResponse response = new LlmCmdParsedResponse();

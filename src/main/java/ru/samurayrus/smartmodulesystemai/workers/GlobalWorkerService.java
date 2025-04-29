@@ -14,6 +14,8 @@ import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -60,7 +62,8 @@ public class GlobalWorkerService {
                 if (response.getStatusCode().is2xxSuccessful()) {
 
                     //  Получаем content, а т.е ответ от нейронки
-                    String content = getContentFromJsonFromAi(response.getBody());
+
+                    String content = Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(getContentFromJsonFromAi(response.getBody())).replaceAll("[thinking...]");
                     contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", content);
                     // Отправляем сообщение от нейронки активным воркерам и либо отправляем результат нейронке, либо отстанавливаем работу
                     isComplete = !callWorkersIfNeed(content);

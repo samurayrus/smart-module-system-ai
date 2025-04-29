@@ -50,7 +50,7 @@ public class FileEditorWorker implements WorkerListener {
             try {
                 switch (response.getFileEditorEnum()) {
                     case READ_FILE -> value = "[FILE_EDITOR вернул ответ]: " + getTextFromFile(response.getFilePath());
-                    case CREATE_FILE -> value = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath());
+                    case CREATE_FILE -> value = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath(), response.getText());
 //                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
                     case PUT_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
                     case SET_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + addTextToFile(response.getFilePath(), response.getText());
@@ -117,7 +117,8 @@ public class FileEditorWorker implements WorkerListener {
                 lines.add(line);
             }
 
-            if (numBegin < 0 || numEnd >= lines.size() || numBegin > numEnd) {
+
+            if (numBegin < 0 || numBegin > numEnd) {
                 return "[Ошибка: Некорректные номера строк!]";
             }
 
@@ -132,23 +133,26 @@ public class FileEditorWorker implements WorkerListener {
                     updatedLines.add(lines.get(i));
                 }
             }
+            //Если модель выходит за рамки файла, то добавляем в конец
+            if(numEnd >= lines.size() && !addedText)
+                updatedLines.add(text);
 
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
                 for (String updatedLine : updatedLines) {
                     bw.write(updatedLine);
                     bw.newLine(); // Добавляем новую строку после каждой строки
                 }
             }
 
-            return "[Текст успешно заменен в файле " + filePath + "!]";
+            return "[Текст успешно заменен в файле " + filePath + "!] [Новый файл: ] " + getTextFromFile(filePath);
 
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
             return "[Ошибка: Некорректные номера строк (не числа)!]";
         }
     }
 
-    public String createFile(String filePath) throws IOException {
-        Files.write(Paths.get(filePath), Collections.singleton(" "), StandardCharsets.UTF_8);
+    public String createFile(String filePath, String text) throws IOException {
+        Files.write(Paths.get(filePath), Collections.singleton(text!=null? text : " "), StandardCharsets.UTF_8);
         return "[Файл " + filePath + " создан!]";
     }
 
