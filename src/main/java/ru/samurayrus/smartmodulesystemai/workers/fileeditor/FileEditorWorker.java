@@ -13,9 +13,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Выполняет операции над файлами
@@ -25,9 +23,9 @@ import java.util.List;
 @Service
 @ConditionalOnProperty(prefix = "app.modules.file-editor-worker", name = "enabled", havingValue = "true")
 public class FileEditorWorker implements WorkerListener {
+    private final LlmFileEditorResponseParser llmFileEditorResponseParser = new LlmFileEditorResponseParser();
     private final WorkerEventDataBus workerEventDataBus;
     private final ContextStorage contextStorage;
-    LlmFileEditorResponseParser llmFileEditorResponseParser = new LlmFileEditorResponseParser();
 
     @Autowired
     public FileEditorWorker(ContextStorage contextStorage, WorkerEventDataBus workerEventDataBus) {
@@ -39,6 +37,17 @@ public class FileEditorWorker implements WorkerListener {
     void registerWorker() {
         log.info("File_WORKER init registration as worker...");
         workerEventDataBus.registerWorker(this);
+
+        Map<String, String> tagsMag = new HashMap<>();
+        tagsMag.put("<GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;GET_ALL_FILES_BY_DIR&gt;");
+        tagsMag.put("<SET_TEXT_TO_FILE>", "&lt;SET_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
+        tagsMag.put("<PUT_TEXT_TO_FILE>", "&lt;PUT_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("</GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;/GET_ALL_FILES_BY_DIR&gt;");
+        tagsMag.put("</SET_TEXT_TO_FILE>", "&lt;/SET_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("</READ_FILE>", "<span style='color:green;'>&lt;/READ_FILE&gt;");
+        tagsMag.put("</PUT_TEXT_TO_FILE>", "&lt;/PUT_TEXT_TO_FILE&gt;</span>");
+        contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
 
     @Override
@@ -52,7 +61,7 @@ public class FileEditorWorker implements WorkerListener {
                     "[Запрос к FILE_EDITOR. Режим - %s]: Path: [%s] Text: [%s]".formatted(response.getFileEditorEnum().name(), response.getFilePath(), response.getText())
             );
 
-            log.info("FILE_EDITOR. Режим - %s]: \nPath: [%s] \nText: [%s]".formatted(response.getFileEditorEnum().name(), response.getFilePath(), response.getText()));
+            log.info("FILE_EDITOR. Режим - {}]: \nPath: [{}] \nText: [{}]", response.getFileEditorEnum().name(), response.getFilePath(), response.getText());
 
             String result = doFileEditionAndReturnResult(response);
 
@@ -157,10 +166,9 @@ public class FileEditorWorker implements WorkerListener {
                 }
             }
 
-            return "[Текст успешно заменен в файле " + filePath + "!] [Новый файл: ] " + getTextFromFile(filePath);
-
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл: %s] ".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            return "[Ошибка: Некорректные номера строк (не числа)!]";
+            return "[Ошибка: Некорректные номера строк!]";
         }
     }
 

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -23,8 +24,9 @@ public class ContextStorage {
     private String systemPrompt;
     private ChatRequest currentContext;
     private final LLMConfig llmConfig;
+
     private final GuiService guiService;
-    private int tokens =0;
+    private int tokens = 0;
 
     public ContextStorage(LLMConfig llmConfig, @Lazy GuiService guiService) {
         this.llmConfig = llmConfig;
@@ -38,7 +40,7 @@ public class ContextStorage {
             String data = new String(dataAsBytes, StandardCharsets.UTF_8);
             systemPrompt = data;
             log.info("SystemPrompt was loaded and have length - " + systemPrompt.length());
-            tokens+=systemPrompt.length()/4;
+            tokens += systemPrompt.length() / 4;
             System.out.println("Текущие токены:" + tokens);
         } catch (IOException e) {
             log.error("Error load system prompt from file", e);
@@ -56,12 +58,17 @@ public class ContextStorage {
             chatMessage.setRole(user);
             chatMessage.setContent(content);
             currentContext.getMessages().add(chatMessage);
-            tokens+=content.length()/4;
+            tokens += content.length() / 4;
             System.out.println("Текущие токены:" + tokens);
         }
 
-        if(guiService.isGuiIsEnabled())
+        if (guiService.isGuiIsEnabled())
             guiService.addMessageToPane(user, content);
+    }
+
+    public void addReplacerSpecialTagFromWorkerToGuiMessages(Map<String, String> replacers) {
+        log.info("Replacer Special Tag {} was registered", replacers.keySet());
+        guiService.getReplacerWorkersTags().putAll(replacers);
     }
 
     private ChatRequest makeFirstChatRequest() {

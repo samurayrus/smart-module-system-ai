@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LlmCmdResponseParser {
-
+    //TODO: Из воркеров вынести тэги начала и окончания в env, чтобы оптимально собирать и отправлять в gui
     private static final Pattern CMD_PATTERN =
             Pattern.compile("<CMD_START>(.+?)<CMD_END>", Pattern.DOTALL);
 

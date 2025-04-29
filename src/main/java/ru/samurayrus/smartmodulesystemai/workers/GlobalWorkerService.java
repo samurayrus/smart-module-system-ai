@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+/**
+ * GlobalWorker Отвечает за все взаимодействия с llm.
+ * Вызывает другие воркеры через шину и если они скажут, что требуется отправить результат их работы нейронке, то отправляет и так по кругу.
+ */
 @Slf4j
 @Service
 public class GlobalWorkerService {
