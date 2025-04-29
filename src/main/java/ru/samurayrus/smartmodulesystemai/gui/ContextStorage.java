@@ -66,7 +66,7 @@ public class ContextStorage {
 
     private ChatRequest makeFirstChatRequest() {
         ChatRequest chatRequest = new ChatRequest();
-        chatRequest.setMaxTokens(1500);
+        chatRequest.setMaxTokens(3500);
         chatRequest.setFrequencyPenalty(0);
         chatRequest.setModel(llmConfig.getModel());
 //        chatRequest.setModel("gemma-3-4b-it-8q");
