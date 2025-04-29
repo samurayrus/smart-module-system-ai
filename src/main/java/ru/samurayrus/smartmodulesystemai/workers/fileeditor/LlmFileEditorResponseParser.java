@@ -11,7 +11,6 @@ public class LlmFileEditorResponseParser {
         for(FileEditorEnum fileEditorEnum : FileEditorEnum.values()) {
             Matcher cmdMatcher = fileEditorEnum.getCurrentPattern().matcher(llmResponse);
             if (cmdMatcher.find()) {
-                System.out.println("Парсер: " + cmdMatcher.group(1));
                 // Получаем команду
                 String cmd = cmdMatcher.group(1);
                 response.setHasFileEditor(true);

@@ -14,67 +14,67 @@ import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Воркер отвечает за работу с базой данных.
+ * Свобода выполнения SQL запросов с гибким распределением по типам операций (SELECT, INSERT, CREATE, ADD, etc)
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "app.modules.databaseworker", name = "enabled", havingValue = "true")
 public class WorkerDatabaseService implements WorkerListener {
+    private final LlmSqlResponseParser responseParser = new LlmSqlResponseParser();
     private final JdbcTemplate jdbcTemplate;
-    private final LlmSqlResponseParser responseParser;
     private final ContextStorage contextStorage;
     private final WorkerEventDataBus workerEventDataBus;
 
     @Autowired
-    public WorkerDatabaseService(@Qualifier("jdbc-template-master") JdbcTemplate jdbcTemplate, ContextStorage contextStorage, WorkerEventDataBus workerEventDataBus) {
+    public WorkerDatabaseService(@Qualifier("jdbc-template-master") JdbcTemplate jdbcTemplate,
+                                 ContextStorage contextStorage,
+                                 WorkerEventDataBus workerEventDataBus) {
         this.jdbcTemplate = jdbcTemplate;
         this.contextStorage = contextStorage;
         this.workerEventDataBus = workerEventDataBus;
-        this.responseParser = new LlmSqlResponseParser();
     }
 
     @PostConstruct
     void registerWorker() {
         log.info("DataBaseWorker init registration as worker...");
         workerEventDataBus.registerWorker(this);
+
+        Map<String, String> tagsMag = new HashMap<>();
+        tagsMag.put("<SQL_START>", "<span style='color:green;'>&lt;SQL_START&gt;");
+        tagsMag.put("<SQL_END>", "&lt;SQL_END&gt;</span>");
+        contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
 
-
-    /**
-     * Пока логика работы - если воркер определяет, что ему нужно дсделать работу, то он её делает,
-     * добавляя в процессе работы отчеты в контекст (и в интерфейс если он включен).
-     * После завершения работы, если llm нужно узнать результат работы, то нужно вернуть true, тогда
-     * глобальный контекст с новыми сообщениями от tool будет переотправлен llm.
-     * Если ответ от llm не нужен, то возвращаем false
-     *
-     * @param content
-     * @return
-     */
     @Override
     public boolean callWorker(String content) {
         LlmSqlParsedResponse llmSqlParsedResponse = responseParser.parseResponse(content);
 
         if (llmSqlParsedResponse.isHasSql()) {
             contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "[Запрос к бд]: " + llmSqlParsedResponse.getSqlQuery());
-            String value;
+            String result;
             try {
-                value = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(executeSqlAndReturnAllAnswers(llmSqlParsedResponse.getSqlQuery()));
+                result = "[Ответ успешен! Sql запрос выполнен]: " + processSqlResult(executeSqlAndReturnAllAnswers(llmSqlParsedResponse.getSqlQuery()));
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                value = "[Ошибка при выполнении запроса] StackTrace: \n " + sw;
+                result = "[Ошибка при выполнении запроса] StackTrace: \n " + sw;
             }
-            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value);
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result);
             return true;
         }
         return false;
     }
 
     private Object executeSqlAndReturnAllAnswers(String sql) {
-        System.out.println("\n ---- \n Запрос к бд {" + sql + "} \n ---");
+        log.info("Database Worker:  Запрос к бд {}", sql);
         sql = sql.trim();
         String sqlForFilter = sql.toLowerCase();
 
@@ -96,7 +96,6 @@ public class WorkerDatabaseService implements WorkerListener {
                 return jdbcTemplate.queryForList(sql);
             }
         } catch (DataAccessException e) {
-
             throw new RuntimeException("Ошибка выполнения SQL: " + e.getMessage(), e);
         }
     }

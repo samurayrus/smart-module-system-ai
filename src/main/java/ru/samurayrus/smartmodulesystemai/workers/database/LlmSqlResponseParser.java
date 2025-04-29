@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 public class LlmSqlResponseParser {
 
     private static final Pattern SQL_PATTERN =
-            Pattern.compile("<SQL_START>\\n(.+?)\\n<SQL_END>", Pattern.DOTALL);
+            Pattern.compile("<SQL_START>(.+?)<SQL_END>", Pattern.DOTALL);
 
     public LlmSqlParsedResponse parseResponse(String llmResponse) {
         LlmSqlParsedResponse response = new LlmSqlParsedResponse();
