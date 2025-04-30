@@ -31,7 +31,7 @@ public class LLMProxyController {
     @GetMapping("/models")
     public ResponseEntity<String> getModels() {
         //TODO: сделать получение и выбор модели
-        String mes = " { \"data\": [ { \"id\": \"gemma-3-4b-it-8q\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
+        String mes = " { \"data\": [ { \"id\": \""+llmConfig.getModel()+"\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
         return new ResponseEntity<>(mes, HttpStatus.OK);
     }
 
