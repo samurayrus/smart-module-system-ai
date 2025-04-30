@@ -15,15 +15,12 @@ import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = "v1")
 public class LLMProxyController {
     private final LLMConfig llmConfig;
-    private final RestTemplate restTemplate;
-    private final HttpHeaders headers;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final HttpHeaders headers = new HttpHeaders();
 
     @Autowired
     public LLMProxyController(LLMConfig llmConfig) {
         this.llmConfig = llmConfig;
-
-        restTemplate = new RestTemplate();
-        headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         //TODO: посмотреть на поведение и если что заменить на headers.set("Authorization", "Bearer " + apiToken);
@@ -35,36 +32,28 @@ public class LLMProxyController {
     public ResponseEntity<String> getModels() {
         //TODO: сделать получение и выбор модели
         String mes = " { \"data\": [ { \"id\": \"gemma-3-4b-it-8q\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
-//        String mes = " { \"data\": [ { \"id\": \"gemma-3-12b-it-qat\", \"object\": \"model\", \"owned_by\": \"organization_owner\"}], \"object\": \"list\"}";
         return new ResponseEntity<>(mes, HttpStatus.OK);
     }
 
-    /*
-    example  body
-    {"model": "gemma-3-4b-it-8q", "messages": [
-    {"role": "system", "content": "Сегодня 20.04.2025"},
-     {"role": "user", "content": "Как сделать так, чтобы ты запоминал предыдущие запросы?"}
-     ],
-      "temperature": 0.7, "max_tokens": -1, "stream": false
-}
-     */
     @PostMapping("/chat/completions")
     public ResponseEntity<String> getChatCompletions(@RequestBody String prompt) {
         return new ResponseEntity<>(proxyRequest(prompt.replaceFirst("\"stream\":true", "\"stream\":false"), "/chat/completions"), HttpStatus.OK);
     }
 
+    @Deprecated
     @PostMapping("/completions")
     public ResponseEntity<String> getCompletions(@RequestBody String prompt) {
         return new ResponseEntity<>(proxyRequest(prompt, "/completions"), HttpStatus.OK);
     }
 
+    //TODO: переделать метод. Поведение не соответствует
     @PostMapping("/embeddings")
     public ResponseEntity<String> getEmb(@RequestBody String prompt) {
         return new ResponseEntity<>(proxyRequest(prompt, "/embeddings"), HttpStatus.OK);
     }
 
     public String proxyRequest(String prompt, String endpoint) {
-        log.info(llmConfig.getUrl() + endpoint + " \n prompt: \n" + prompt);
+        log.info("URL: [{}], Prompt: [{}]", llmConfig.getUrl() + endpoint, prompt);
 
         try {
             ChatRequestProxy chatRequest = new ObjectMapper().readValue(prompt, ChatRequestProxy.class);

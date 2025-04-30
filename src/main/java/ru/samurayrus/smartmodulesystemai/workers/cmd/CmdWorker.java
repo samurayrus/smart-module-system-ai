@@ -11,14 +11,20 @@ import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
+/**
+ * Воркер отвечает за НЕБЕЗОПАСНУЮ работу LLM с CMD. Решение для смельчаков.
+ * Зато у нейронки появляется новый функционал ;)
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "app.modules.cmd-worker", name = "enabled", havingValue = "true")
 public class CmdWorker implements WorkerListener {
+    private final LlmCmdResponseParser llmCmdResponseParser = new LlmCmdResponseParser();
     private final WorkerEventDataBus workerEventDataBus;
     private final ContextStorage contextStorage;
-    LlmCmdResponseParser llmCmdResponseParser = new LlmCmdResponseParser();
 
     @Autowired
     public CmdWorker(ContextStorage contextStorage, WorkerEventDataBus workerEventDataBus) {
@@ -30,6 +36,11 @@ public class CmdWorker implements WorkerListener {
     void registerWorker() {
         log.info("CmdWorker init registration as worker...");
         workerEventDataBus.registerWorker(this);
+
+        Map<String, String> tagsMag = new HashMap<>();
+        tagsMag.put("<CMD_START>", "<span style='color:green;'>&lt;CMD_START&gt;");
+        tagsMag.put("<CMD_END>", "&lt;CMD_END&gt;</span>");
+        contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
 
     @Override
@@ -43,16 +54,14 @@ public class CmdWorker implements WorkerListener {
             String[] queries = new String[1];
             queries[0] = llmCmdParsedResponse.getCmdQuery();
             System.out.println("Список вызовов: " + queries.length);
-            StringBuilder value = new StringBuilder();
+            StringBuilder result = new StringBuilder();
             
             try {
 //                value = "[CMD вернул ответ]: " +cmdGo(llmCmdParsedResponse.getCmdQuery());
-                value.append("[CMD вернул]:");
+                result.append("[CMD вернул]:");
                 Arrays.stream(queries).forEach(x-> {
                     try {
-                        System.out.println("Выполнение отдельного запроса: " + x);
-                        value.append(cmdGo(x));
-
+                        result.append(cmdGo(x));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -61,9 +70,9 @@ public class CmdWorker implements WorkerListener {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                value.append( "[Ошибка при выполнении CMD запроса] StackTrace: \n " + sw);
+                result.append("[Ошибка при выполнении CMD запроса] StackTrace: \n ").append(sw);
             }
-            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value.toString());
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result.toString());
             return true;
         }
         return false;

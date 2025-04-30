@@ -13,18 +13,19 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
+/**
+ * Выполняет операции над файлами
+ * Создание, редактирование, чтение с номерами строк, получение списка файлов в каталоге и подкаталогах
+ */
 @Slf4j
 @Service
 @ConditionalOnProperty(prefix = "app.modules.file-editor-worker", name = "enabled", havingValue = "true")
 public class FileEditorWorker implements WorkerListener {
+    private final LlmFileEditorResponseParser llmFileEditorResponseParser = new LlmFileEditorResponseParser();
     private final WorkerEventDataBus workerEventDataBus;
     private final ContextStorage contextStorage;
-    LlmFileEditorResponseParser llmFileEditorResponseParser = new LlmFileEditorResponseParser();
 
     @Autowired
     public FileEditorWorker(ContextStorage contextStorage, WorkerEventDataBus workerEventDataBus) {
@@ -36,6 +37,17 @@ public class FileEditorWorker implements WorkerListener {
     void registerWorker() {
         log.info("File_WORKER init registration as worker...");
         workerEventDataBus.registerWorker(this);
+
+        Map<String, String> tagsMag = new HashMap<>();
+        tagsMag.put("<GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;GET_ALL_FILES_BY_DIR&gt;");
+        tagsMag.put("<SET_TEXT_TO_FILE>", "&lt;SET_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
+        tagsMag.put("<PUT_TEXT_TO_FILE>", "&lt;PUT_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("</GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;/GET_ALL_FILES_BY_DIR&gt;");
+        tagsMag.put("</SET_TEXT_TO_FILE>", "&lt;/SET_TEXT_TO_FILE&gt;</span>");
+        tagsMag.put("</READ_FILE>", "<span style='color:green;'>&lt;/READ_FILE&gt;");
+        tagsMag.put("</PUT_TEXT_TO_FILE>", "&lt;/PUT_TEXT_TO_FILE&gt;</span>");
+        contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
 
     @Override
@@ -44,32 +56,43 @@ public class FileEditorWorker implements WorkerListener {
 
         if (response.isHasFileEditor()) {
             response.setText(response.getText().replaceAll("\\n", "\n"));
-            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", "[Запрос к FILE_EDITOR. Режим - " + response.getFileEditorEnum().name() + "]: " + response.getFilePath() + " " + response.getText());
-            log.info("FILE_EDITOR -" + response.getFileEditorEnum() + ": \n" + response.getFilePath() + " " + response.getText());
-            String value = "[FILE_EDITOR вернул]:[EMPTY]";
-            try {
-                switch (response.getFileEditorEnum()) {
-                    case READ_FILE -> value = "[FILE_EDITOR вернул ответ]: " + getTextFromFile(response.getFilePath());
-                    case CREATE_FILE -> value = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath());
-//                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
-                    case PUT_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
-                    case SET_TEXT_TO_FILE -> value = "[FILE_EDITOR вернул ответ]: " + addTextToFile(response.getFilePath(), response.getText());
-                    case GET_ALL_FILES_BY_DIR -> value = "[FILE_EDITOR вернул ответ]: " + getAllFilesFromDirectory(response.getFilePath());
-                }
+            contextStorage.addMessageToContextAndMessagesListIfEnabled(
+                    "tool",
+                    "[Запрос к FILE_EDITOR. Режим - %s]: Path: [%s] Text: [%s]".formatted(response.getFileEditorEnum().name(), response.getFilePath(), response.getText())
+            );
 
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                value = ("[Ошибка при выполнении FILE_EDITOR запроса] StackTrace: \n " + sw);
-            }
-            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", value.toString());
+            log.info("FILE_EDITOR. Режим - {}]: \nPath: [{}] \nText: [{}]", response.getFileEditorEnum().name(), response.getFilePath(), response.getText());
+
+            String result = doFileEditionAndReturnResult(response);
+
+            contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result);
             return true;
         }
         return false;
     }
 
-    public String getTextFromFile(String filePath) throws Exception {
+    private String doFileEditionAndReturnResult(LlmFileEditorParsedResponse response) {
+        String result = "[FILE_EDITOR вернул]:[EMPTY]";
+        try {
+            switch (response.getFileEditorEnum()) {
+                case READ_FILE -> result = "[FILE_EDITOR вернул ответ]: " + getTextFromFile(response.getFilePath());
+                case CREATE_FILE -> result = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath(), response.getText());
+//                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
+                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR вернул ответ]: " + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
+                case SET_TEXT_TO_FILE -> result = "[FILE_EDITOR вернул ответ]: " + addTextToFile(response.getFilePath(), response.getText());
+                case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR вернул ответ]: " + getAllFilesFromDirectory(response.getFilePath());
+            }
+
+        } catch (Exception e) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            result = ("[Ошибка при выполнении FILE_EDITOR запроса] StackTrace: \n " + sw);
+        }
+        return result;
+    }
+
+    private String getTextFromFile(String filePath) throws Exception {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             StringBuilder sb = new StringBuilder();
             String line = br.readLine();
@@ -84,7 +107,7 @@ public class FileEditorWorker implements WorkerListener {
         }
     }
 
-    public String getAllFilesFromDirectory(String path){
+    private String getAllFilesFromDirectory(String path) {
         List<String> filePaths = new ArrayList<>();
         File root = new File(path);
 
@@ -109,7 +132,7 @@ public class FileEditorWorker implements WorkerListener {
         }
     }
 
-    public String putTextToFile(String filePath, int numBegin, int numEnd, String text) throws IOException {
+    private String putTextToFile(String filePath, int numBegin, int numEnd, String text) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             List<String> lines = new ArrayList<>();
             String line;
@@ -117,7 +140,7 @@ public class FileEditorWorker implements WorkerListener {
                 lines.add(line);
             }
 
-            if (numBegin < 0 || numEnd >= lines.size() || numBegin > numEnd) {
+            if (numBegin < 0 || numBegin > numEnd) {
                 return "[Ошибка: Некорректные номера строк!]";
             }
 
@@ -132,6 +155,9 @@ public class FileEditorWorker implements WorkerListener {
                     updatedLines.add(lines.get(i));
                 }
             }
+            //Если модель выходит за рамки файла, то добавляем в конец
+            if (numEnd >= lines.size() && !addedText)
+                updatedLines.add(text);
 
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
                 for (String updatedLine : updatedLines) {
@@ -140,19 +166,19 @@ public class FileEditorWorker implements WorkerListener {
                 }
             }
 
-            return "[Текст успешно заменен в файле " + filePath + "!]";
-
-        } catch (NumberFormatException e) {
-            return "[Ошибка: Некорректные номера строк (не числа)!]";
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл: %s] ".formatted(filePath, getTextFromFile(filePath));
+        } catch (Exception e) {
+            return "[Ошибка: Некорректные номера строк!]";
         }
     }
 
-    public String createFile(String filePath) throws IOException {
-        Files.write(Paths.get(filePath), Collections.singleton(" "), StandardCharsets.UTF_8);
+    @Deprecated
+    private String createFile(String filePath, String text) throws IOException {
+        Files.write(Paths.get(filePath), Collections.singleton(text != null ? text : " "), StandardCharsets.UTF_8);
         return "[Файл " + filePath + " создан!]";
     }
 
-    public String addTextToFile(String filePath, String text) throws IOException {
+    private String addTextToFile(String filePath, String text) throws IOException {
         Files.write(Paths.get(filePath), Collections.singleton(text), StandardCharsets.UTF_8);
         return "[В файл " + filePath + " добавлен текст!]";
     }

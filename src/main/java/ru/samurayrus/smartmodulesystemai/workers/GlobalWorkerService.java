@@ -14,15 +14,20 @@ import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+/**
+ * GlobalWorker Отвечает за все взаимодействия с llm.
+ * Вызывает другие воркеры через шину и если они скажут, что требуется отправить результат их работы нейронке, то отправляет и так по кругу.
+ */
 @Slf4j
 @Service
 public class GlobalWorkerService {
-    private final ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final HttpHeaders headers = new HttpHeaders();
     private final WorkerEventDataBus workerEventDataBus;
     private final LLMConfig llmConfig;
-    private final RestTemplate restTemplate;
-    private final HttpHeaders headers;
     private final ContextStorage contextStorage;
 
     @Autowired
@@ -30,40 +35,33 @@ public class GlobalWorkerService {
         this.workerEventDataBus = workerEventDataBus;
         this.llmConfig = llmConfig;
         this.contextStorage = contextStorage;
-        mapper = new ObjectMapper();
 
-        restTemplate = new RestTemplate();
-        headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (llmConfig.isNeedAuth())
             headers.setBearerAuth(llmConfig.getApiKey());
     }
 
     public void workForAi() {
-//        log.info("---GlobalWorkerService <--> llm --- \n ");
-
         try {
             boolean isComplete = false;
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
-//                String fullPrompt = mapper.writeValueAsString(contextStorage.getCurrentContext());
-//                log.info("---Промпт для работы: \n " + fullPrompt + "\n ---");
-
-
                 ChatRequest chatRequest = contextStorage.getCurrentContext();
-                System.out.println(mapper.writeValueAsString(chatRequest));
 
                 HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
                 // Выполнение запроса к LLM API
-                ResponseEntity<String> response = restTemplate.exchange(llmConfig.getUrl() + "/chat/completions", HttpMethod.POST, request, String.class);
+                ResponseEntity<String> response = restTemplate.exchange(
+                        llmConfig.getUrl() + "/chat/completions",
+                        HttpMethod.POST,
+                        request,
+                        String.class
+                );
 
-                // Проверка статуса ответа
                 if (response.getStatusCode().is2xxSuccessful()) {
-
-                    //  Получаем content, а т.е ответ от нейронки
-                    String content = getContentFromJsonFromAi(response.getBody());
+                    //  Получаем ответ от нейронки с игнорированием размышлений, чтобы не переполнять контекст
+                    //  (она подумала, чтобы ответить, ответила и больше нам это не надо, наверное)
+                    String content = Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(getContentFromJsonFromAi(response.getBody())).replaceAll("[thinking...]");
                     contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", content);
-                    // Отправляем сообщение от нейронки активным воркерам и либо отправляем результат нейронке, либо отстанавливаем работу
                     isComplete = !callWorkersIfNeed(content);
                     // Отправляем нейронке результат и ждем реакции при повторе
                     // <--
@@ -77,7 +75,7 @@ public class GlobalWorkerService {
         }
     }
 
-    public String getContentFromJsonFromAi(String jsonAiAnswer) throws JsonProcessingException {
+    private String getContentFromJsonFromAi(String jsonAiAnswer) throws JsonProcessingException {
         // 1. Парсим основной ответ
         Map<String, Object> body = mapper.readValue(jsonAiAnswer, new TypeReference<Map<String, Object>>() {
         });
