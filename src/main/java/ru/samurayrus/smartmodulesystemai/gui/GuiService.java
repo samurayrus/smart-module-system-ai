@@ -5,10 +5,10 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.workers.GlobalWorkerService;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.text.Element;
 import javax.swing.text.SimpleAttributeSet;
@@ -16,8 +16,22 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,19 +103,18 @@ public class GuiService {
         sendButton.setFocusPainted(false);
         sendButton.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
 
+        //Регистрируем вставку картинок через CTRL + V
+        registerPasteOperationForImageAndText(inputField);
+        //Регистрируем для DragAndDrop картинки
+        registerDragAndDropEventForImages(inputField);
+
         inputPanel.add(inputField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
 
-        // Добавляем компоненты в окно
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(inputPanel, BorderLayout.SOUTH);
 
-        ActionListener sendAction = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendMessage(inputField);
-            }
-        };
+        ActionListener sendAction = e -> sendMessage(inputField);
 
         sendButton.addActionListener(sendAction);
         inputField.addActionListener(sendAction);
@@ -129,7 +142,7 @@ public class GuiService {
 
                 String formattedMessage = message;
                 // Замена служебных тэгов на отображаемые (от воркеров и тп)
-                for(String replace : replacerWorkersTags.keySet()){
+                for (String replace : replacerWorkersTags.keySet()) {
                     formattedMessage = formattedMessage.replace(replace, replacerWorkersTags.get(replace));
                 }
 
@@ -230,5 +243,61 @@ public class GuiService {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void registerPasteOperationForImageAndText(JTextField inputField) {
+        inputField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_V) {
+                    try {
+                        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        Transferable content = clipboard.getContents(null);
+
+                        if (content == null || !clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor))
+                            return;
+
+                        sendImageToAiWithAddToGuiMessage((BufferedImage) content.getTransferData(DataFlavor.imageFlavor));
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        });
+    }
+
+    private void registerDragAndDropEventForImages(JTextField inputField) {
+        inputField.setDragEnabled(true);
+        new DropTarget(inputField, new DropTargetAdapter() {
+            @Override
+            public void drop(DropTargetDropEvent dtde) {
+                try {
+                    dtde.acceptDrop(DnDConstants.ACTION_COPY);
+                    Transferable transferable = dtde.getTransferable();
+
+                    //Сделал забор только первого элемента из drag and drop файлов, т.к больше одного вроде не поддерживается все равно.
+                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        java.util.List<File> fileList = (java.util.List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
+                        byte[] bytes = Files.readAllBytes(fileList.get(0).toPath());
+                        addMessageToPane("user", "[ОТПРАВЛЕНО ИЗОБРАЖЕНИЕ. РАЗМЕР: " + bytes.length + "]");
+                        contextStorage.sendMessageWithImage(bytes);
+                        globalWorkerService.workForAi();
+                    }
+                    dtde.dropComplete(true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    dtde.dropComplete(false);
+                }
+            }
+        });
+    }
+
+    private void sendImageToAiWithAddToGuiMessage(BufferedImage image) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos);
+        byte[] bytes = baos.toByteArray();
+        addMessageToPane("user", "[ОТПРАВЛЕНО ИЗОБРАЖЕНИЕ. РАЗМЕР: " + bytes.length + "]");
+        contextStorage.sendMessageWithImage(bytes);
+        globalWorkerService.workForAi();
     }
 }

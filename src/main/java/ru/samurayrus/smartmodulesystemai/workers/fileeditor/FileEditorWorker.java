@@ -75,12 +75,12 @@ public class FileEditorWorker implements WorkerListener {
         String result = "[FILE_EDITOR вернул]:[EMPTY]";
         try {
             switch (response.getFileEditorEnum()) {
-                case READ_FILE -> result = "[FILE_EDITOR вернул ответ]: " + getTextFromFile(response.getFilePath());
-                case CREATE_FILE -> result = "[FILE_EDITOR вернул ответ]: " + createFile(response.getFilePath(), response.getText());
+                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА) ]: \n" + getTextFromFile(response.getFilePath());
+                case CREATE_FILE -> result = "[FILE_EDITOR CREATE_FILE вернул ответ]: \n" + createFile(response.getFilePath(), response.getText());
 //                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
-                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR вернул ответ]: " + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
-                case SET_TEXT_TO_FILE -> result = "[FILE_EDITOR вернул ответ]: " + addTextToFile(response.getFilePath(), response.getText());
-                case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR вернул ответ]: " + getAllFilesFromDirectory(response.getFilePath());
+                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ]: \n" + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
+                case SET_TEXT_TO_FILE -> result = "[FILE_EDITOR SET_TEXT_TO_FILE вернул ответ]: \n" + addTextToFile(response.getFilePath(), response.getText());
+                case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR GET_ALL_FILES_BY_DIR вернул ответ]: \n" + getAllFilesFromDirectory(response.getFilePath());
             }
 
         } catch (Exception e) {
@@ -107,6 +107,7 @@ public class FileEditorWorker implements WorkerListener {
         }
     }
 
+    //TODO: выводить основной путь отдельно от относительных, чтобы экономить токены
     private String getAllFilesFromDirectory(String path) {
         List<String> filePaths = new ArrayList<>();
         File root = new File(path);
@@ -166,9 +167,9 @@ public class FileEditorWorker implements WorkerListener {
                 }
             }
 
-            return "[Текст успешно заменен в файле %s!] [Обновленный файл: %s] ".formatted(filePath, getTextFromFile(filePath));
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА): %s] ".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            return "[Ошибка: Некорректные номера строк!]";
+            return "[Ошибка: Некорректные номера строк или файл не найден!]";
         }
     }
 
