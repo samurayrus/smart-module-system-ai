@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class ChatMessage {
     private String role;
     /**
-     * В мультимодальности - великолепное поле. (сарказм, ждем пр)
+     * В мультимодальности - великолепное поле. Тут находится либо String, либо массив из Image+Text
      */
-    private String content;
+    private Object content;
 }

@@ -47,31 +47,34 @@ public class GlobalWorkerService {
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
                 ChatRequest chatRequest = contextStorage.getCurrentContext();
-
-                HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
-                // Выполнение запроса к LLM API
-                ResponseEntity<String> response = restTemplate.exchange(
-                        llmConfig.getUrl() + "/chat/completions",
-                        HttpMethod.POST,
-                        request,
-                        String.class
-                );
-
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    //  Получаем ответ от нейронки с игнорированием размышлений, чтобы не переполнять контекст
-                    //  (она подумала, чтобы ответить, ответила и больше нам это не надо, наверное)
-                    String content = Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(getContentFromJsonFromAi(response.getBody())).replaceAll("[thinking...]");
-                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", content);
-                    isComplete = !callWorkersIfNeed(content);
-                    // Отправляем нейронке результат и ждем реакции при повторе
-                    // <--
-                } else {
-                    throw new Exception("LLM API returned an error: " + response.getStatusCode());
-                }
+                //Выполняем запрос к llm и получаем обработанный ответ
+                String responseContentWithoutThinking = removeThinkingTagFromResponseContent(sendCurrentContextToLLM(chatRequest));
+                //Обновляем контекст
+                contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
+                //Вызываем воркеры
+                isComplete = !callWorkersIfNeed(responseContentWithoutThinking);
+                // Отправляем нейронке результат и ждем реакции при повторе
+                // <--
             }
         } catch (Exception e) {
             log.error("Ошибка при работе с llm", e);
             contextStorage.addMessageToContextAndMessagesListIfEnabled("worker-ai", "Ошибка при работе с llm - " + e.getMessage());
+        }
+    }
+
+    private String sendCurrentContextToLLM(ChatRequest chatRequest) throws Exception {
+        HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
+        ResponseEntity<String> response = restTemplate.exchange(
+                llmConfig.getUrl() + "/chat/completions",
+                HttpMethod.POST,
+                request,
+                String.class
+        );
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return getContentFromJsonFromAi(response.getBody());
+        } else {
+            throw new Exception("LLM API returned an error: " + response.getStatusCode());
         }
     }
 
@@ -91,5 +94,13 @@ public class GlobalWorkerService {
 
     private boolean callWorkersIfNeed(String contentFromLLM) {
         return workerEventDataBus.callActivityWorkers(contentFromLLM);
+    }
+
+    /**
+     * Игнорируем размышления, чтобы не переполнять контекст
+     * она подумала, чтобы ответить, ответила и больше нам это не надо (qwen как раз рекомендует так делать)
+     **/
+    private String removeThinkingTagFromResponseContent(String responseContent) {
+        return Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(responseContent).replaceAll("[thinking...]");
     }
 }

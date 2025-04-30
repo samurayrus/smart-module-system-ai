@@ -7,15 +7,16 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
-import ru.samurayrus.smartmodulesystemai.utils.ChatMessage;
-import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
+import ru.samurayrus.smartmodulesystemai.utils.*;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Map;
+
 
 @Slf4j
 @Component
@@ -66,6 +67,27 @@ public class ContextStorage {
             guiService.addMessageToPane(user, content);
     }
 
+
+    public void sendMessageWithImage(byte[] bytes) {
+        ImageUrl imageUrl = new ImageUrl();
+        imageUrl.setUrl("data:image/png;base64," + Base64.getEncoder().encodeToString(bytes));
+//        imageUrl.setUrl("data:image/png;base64," + Base64.getEncoder().encodeToString(new FileInputStream("D:\\Downloads/107a2a9d-14fd-5197-8174-5261caf8d628.png").readAllBytes()));
+        imageUrl.setDetail("high");
+
+        ImageContent imageContent = new ImageContent();
+        imageContent.setImage_url(imageUrl);
+        imageContent.setType("image_url");
+
+        TextContent textContent = new TextContent();
+        textContent.setType("text");
+        textContent.setText("user прислал картинку для анализа");
+
+        ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setRole("user");
+        chatMessage.setContent(new Object[]{textContent, imageContent});
+        currentContext.getMessages().add(chatMessage);
+    }
+
     public void addReplacerSpecialTagFromWorkerToGuiMessages(Map<String, String> replacers) {
         log.info("Replacer Special Tag {} was registered", replacers.keySet());
         guiService.getReplacerWorkersTags().putAll(replacers);
@@ -73,7 +95,7 @@ public class ContextStorage {
 
     private ChatRequest makeFirstChatRequest() {
         ChatRequest chatRequest = new ChatRequest();
-        chatRequest.setMaxTokens(3500);
+        chatRequest.setMaxTokens(4500);
         chatRequest.setFrequencyPenalty(0);
         chatRequest.setModel(llmConfig.getModel());
 //        chatRequest.setModel("gemma-3-4b-it-8q");
@@ -84,12 +106,8 @@ public class ContextStorage {
         systemMessage.setRole("system");
         systemMessage.setContent(getSystemPrompt());
 
-        ChatMessage userFirstMessage = new ChatMessage();
-        userFirstMessage.setRole("user");
-        userFirstMessage.setContent("[Start a new chat]");
         chatRequest.setMessages(new ArrayList<>());
         chatRequest.getMessages().add(systemMessage);
-        chatRequest.getMessages().add(userFirstMessage);
         return chatRequest;
     }
 
