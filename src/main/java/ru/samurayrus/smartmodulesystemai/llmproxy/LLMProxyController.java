@@ -56,7 +56,7 @@ public class LLMProxyController {
         log.info("URL: [{}], Prompt: [{}]", llmConfig.getUrl() + endpoint, prompt);
 
         try {
-            ChatRequestProxy chatRequest = new ObjectMapper().readValue(prompt, ChatRequestProxy.class);
+            ChatRequest chatRequest = new ObjectMapper().readValue(prompt, ChatRequest.class);
 
             HttpEntity<String> request = new HttpEntity<>(new ObjectMapper().writeValueAsString(chatRequest), headers);
             // Выполнение запроса к LLM API
