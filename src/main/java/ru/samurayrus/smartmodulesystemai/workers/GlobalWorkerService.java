@@ -47,8 +47,8 @@ public class GlobalWorkerService {
             while (!isComplete) {
                 //Подсасываем актуальный контекст беседы
                 ChatRequest chatRequest = contextStorage.getCurrentContext();
+                //Выполняем запрос к llm и получаем обработанный ответ
                 String responseContentWithoutThinking = removeThinkingTagFromResponseContent(sendCurrentContextToLLM(chatRequest));
-
                 //Обновляем контекст
                 contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
                 //Вызываем воркеры
