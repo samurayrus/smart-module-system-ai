@@ -40,14 +40,18 @@ public class FileEditorWorker implements WorkerListener {
 
         Map<String, String> tagsMag = new HashMap<>();
         tagsMag.put("<GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;GET_ALL_FILES_BY_DIR&gt;");
-        tagsMag.put("<SET_TEXT_TO_FILE>", "&lt;SET_TEXT_TO_FILE&gt;</span>");
-        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
-        tagsMag.put("<PUT_TEXT_TO_FILE>", "&lt;PUT_TEXT_TO_FILE&gt;</span>");
         tagsMag.put("</GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;/GET_ALL_FILES_BY_DIR&gt;");
+
+        tagsMag.put("<SET_TEXT_TO_FILE>", "<span style='color:green;'>&lt;SET_TEXT_TO_FILE&gt;");
         tagsMag.put("</SET_TEXT_TO_FILE>", "&lt;/SET_TEXT_TO_FILE&gt;</span>");
+
+        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
         tagsMag.put("</READ_FILE>", "<span style='color:green;'>&lt;/READ_FILE&gt;");
+
+        tagsMag.put("<PUT_TEXT_TO_FILE>", "<span style='color:green;'>&lt;PUT_TEXT_TO_FILE&gt;");
         tagsMag.put("</PUT_TEXT_TO_FILE>", "&lt;/PUT_TEXT_TO_FILE&gt;</span>");
-        tagsMag.put("<ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", "&lt;ADD_TEXT_TO_FILE_AFTER_NUM_ROW&gt;</span>");
+
+        tagsMag.put("<ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", "<span style='color:green;'>&lt;ADD_TEXT_TO_FILE_AFTER_NUM_ROW&gt;");
         tagsMag.put("</ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", "&lt;/ADD_TEXT_TO_FILE_AFTER_NUM_ROW&gt;</span>");
         contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
