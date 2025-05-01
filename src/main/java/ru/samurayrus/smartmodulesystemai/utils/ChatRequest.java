@@ -3,7 +3,9 @@ package ru.samurayrus.smartmodulesystemai.utils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Tool;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -12,6 +14,8 @@ public class ChatRequest {
     private List<ChatMessage> messages;
     private String model;
     private double temperature;
+
+    private List<Tool> tools = new ArrayList<>();
 
     @JsonProperty("max_tokens")
     private int maxTokens;

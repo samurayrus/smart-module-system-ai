@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
+import ru.samurayrus.smartmodulesystemai.utils.tools.*;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
@@ -48,6 +49,51 @@ public class FileEditorWorker implements WorkerListener {
         tagsMag.put("</READ_FILE>", "<span style='color:green;'>&lt;/READ_FILE&gt;");
         tagsMag.put("</PUT_TEXT_TO_FILE>", "&lt;/PUT_TEXT_TO_FILE&gt;</span>");
         contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
+
+//        // Создаем объекты Property для query, category и max_price
+//        Property query = new Property();
+//        query.setType("string");
+//        query.setDescription("Search terms or product name");
+//
+//        Property category = new Property();
+//        category.setType("string");
+//        category.setDescription("Product category to filter by");
+//        category.setEnumValues(Arrays.asList("electronics", "clothing", "home", "outdoor"));
+//
+//        Property maxPrice = new Property();
+//        maxPrice.setType("number");
+//        maxPrice.setDescription("Maximum price in dollars");
+//
+//        // Создаем объект Properties и заполняем его
+//        ru.samurayrus.smartmodulesystemai.utils.tools.Properties properties = new ru.samurayrus.smartmodulesystemai.utils.tools.Properties();
+//        properties.setQuery(query);
+//        properties.setCategory(category);
+//        properties.setMaxPrice(maxPrice);
+//
+//        // Создаем объект Parameters
+//        Parameters parameters = new Parameters();
+//        parameters.setType("object");
+//        parameters.setProperties(properties);
+//        parameters.setRequired(Arrays.asList("query"));
+//        parameters.setAdditionalProperties(false);
+//
+//        // Создаем объект Function
+//        Function function = new Function();
+//        function.setName("search_products");
+//        function.setDescription("Search the product catalog by various criteria. Use this whenever a customer asks about product availability, pricing, or specifications.");
+//        function.setParameters(parameters);
+//
+//        // Создаем объект Tool
+//        Tool tool = new Tool();
+//        tool.setType("function");
+//        tool.setFunction(function);
+
+        // Создаем объект ToolsWrapper и добавляем в него Tool
+
+        contextStorage.addTool(createFunctionsFindAllFiles());
+        contextStorage.addTool(createFunctionsPutIntoFile());
+        // Выводим результат (можно использовать Jackson/Gson для сериализации в JSON)
+        System.out.println("ToolsWrapper создан и заполнен:");
     }
 
     @Override
@@ -75,7 +121,7 @@ public class FileEditorWorker implements WorkerListener {
         String result = "[FILE_EDITOR вернул]:[EMPTY]";
         try {
             switch (response.getFileEditorEnum()) {
-                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА) ]: \n" + getTextFromFile(response.getFilePath());
+                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (С номерами строк для работы с файлом) ]: \n" + getTextFromFile(response.getFilePath());
                 case CREATE_FILE -> result = "[FILE_EDITOR CREATE_FILE вернул ответ]: \n" + createFile(response.getFilePath(), response.getText());
 //                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
                 case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ]: \n" + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
@@ -88,6 +134,7 @@ public class FileEditorWorker implements WorkerListener {
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
             result = ("[Ошибка при выполнении FILE_EDITOR запроса] StackTrace: \n " + sw);
+            log.error("Ошибка при операции с файлом",e);
         }
         return result;
     }
@@ -142,7 +189,7 @@ public class FileEditorWorker implements WorkerListener {
             }
 
             if (numBegin < 0 || numBegin > numEnd) {
-                return "[Ошибка: Некорректные номера строк!]";
+                throw new IOException("[Ошибка: Некорректные номера строк!]");
             }
 
             List<String> updatedLines = new ArrayList<>();
@@ -167,9 +214,9 @@ public class FileEditorWorker implements WorkerListener {
                 }
             }
 
-            return "[Текст успешно заменен в файле %s!] [Обновленный файл (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА): %s] ".formatted(filePath, getTextFromFile(filePath));
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл (С номерами строк для работы с файлом): \n %s] ".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            return "[Ошибка: Некорректные номера строк или файл не найден!]";
+            throw new IOException("[Ошибка: Некорректные номера строк или файл не найден!]" + e.getMessage());
         }
     }
 
@@ -183,5 +230,79 @@ public class FileEditorWorker implements WorkerListener {
         Files.write(Paths.get(filePath), Collections.singleton(text), StandardCharsets.UTF_8);
         return "[В файл " + filePath + " добавлен текст!]";
     }
+
+    private Tool createFunctionsFindAllFiles(){
+        Property path = new Property();
+        path.setType("string");
+        path.setDescription("Путь до папки в которой нужно осуществить поиск");
+
+        // Создаем объект Properties и заполняем его
+        ru.samurayrus.smartmodulesystemai.utils.tools.Properties properties = new ru.samurayrus.smartmodulesystemai.utils.tools.Properties();
+        properties.setPath(path);
+
+        // Создаем объект Parameters
+        Parameters parameters = new Parameters();
+        parameters.setType("object");
+        parameters.setProperties(properties);
+        parameters.setRequired(Arrays.asList("path"));
+        parameters.setAdditionalProperties(false);
+
+        // Создаем объект Function
+        Function function = new Function();
+        function.setName("search_files_for_path");
+        function.setDescription("Осуществляет поиск всех файлов в папке по пути и всех каталогах внутри");
+        function.setParameters(parameters);
+
+        // Создаем объект Tool
+        Tool tool = new Tool();
+        tool.setType("function");
+        tool.setFunction(function);
+
+        return tool;
+    }
+
+    private Tool createFunctionsPutIntoFile(){
+        Property path = new Property();
+        path.setType("string");
+        path.setDescription("Полный путь до файла");
+        Property numStart = new Property();
+        numStart.setType("string");
+        numStart.setDescription("Номер начальной строки для замены");
+        Property numEnd = new Property();
+        numEnd.setType("string");
+        numEnd.setDescription("Номер конечной строки для замены");
+        Property text = new Property();
+        text.setType("string");
+        text.setDescription("Переданный текст для замены. Чтобы вставить несколько строк вместо одной стрки, нужно передать текст с переносом на след строку");
+
+        // Создаем объект Properties и заполняем его
+        ru.samurayrus.smartmodulesystemai.utils.tools.Properties properties = new ru.samurayrus.smartmodulesystemai.utils.tools.Properties();
+        properties.setPath(path);
+        properties.setNumEnd(numEnd);
+        properties.setNumStart(numStart);
+        properties.setText(text);
+
+
+        // Создаем объект Parameters
+        Parameters parameters = new Parameters();
+        parameters.setType("object");
+        parameters.setProperties(properties);
+        parameters.setRequired(Arrays.asList("path","numStart","numEnd","text"));
+        parameters.setAdditionalProperties(false);
+
+        // Создаем объект Function
+        Function function = new Function();
+        function.setName("put_text_into_file_by_rows");
+        function.setDescription("Заменяет все строки между указанными на переданные в параметре");
+        function.setParameters(parameters);
+
+        // Создаем объект Tool
+        Tool tool = new Tool();
+        tool.setType("function");
+        tool.setFunction(function);
+
+        return tool;
+    }
+    //TOOL : [{id=940132680, type=function, function={name=search_products, arguments={"query":"products","maxPrice":15}}}]
 }
 

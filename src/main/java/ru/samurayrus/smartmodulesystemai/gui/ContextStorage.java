@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.utils.*;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Tool;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 
@@ -51,6 +53,10 @@ public class ContextStorage {
 
         log.info("Loaded model: " + llmConfig.getModel());
         currentContext = makeFirstChatRequest();
+    }
+
+    public void addTool(Tool tools){
+        currentContext.getTools().add(tools);
     }
 
     public void addMessageToContextAndMessagesListIfEnabled(final String user, final String content) {
@@ -99,9 +105,9 @@ public class ContextStorage {
         chatRequest.setFrequencyPenalty(0);
         chatRequest.setModel(llmConfig.getModel());
 //        chatRequest.setModel("gemma-3-4b-it-8q");
-        chatRequest.setTemperature(1);
+        chatRequest.setTemperature(0.7);
         chatRequest.setStream(false);
-        chatRequest.setTopP(1);
+        chatRequest.setTopP(0.95);
         ChatMessage systemMessage = new ChatMessage();
         systemMessage.setRole("system");
         systemMessage.setContent(getSystemPrompt());

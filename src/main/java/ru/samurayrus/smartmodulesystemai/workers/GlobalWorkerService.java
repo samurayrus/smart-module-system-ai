@@ -89,6 +89,7 @@ public class GlobalWorkerService {
 
         // 3. Достаем message как Map (без преобразования в строку и обратно)
         Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
+        System.out.println("TOOL : " + message.get("tool_calls") );
         return (String) message.get("content");
     }
 
@@ -101,6 +102,7 @@ public class GlobalWorkerService {
      * она подумала, чтобы ответить, ответила и больше нам это не надо (qwen как раз рекомендует так делать)
      **/
     private String removeThinkingTagFromResponseContent(String responseContent) {
+        if(responseContent == null) return "[TOOL]";
         return Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(responseContent).replaceAll("[thinking...]");
     }
 }
