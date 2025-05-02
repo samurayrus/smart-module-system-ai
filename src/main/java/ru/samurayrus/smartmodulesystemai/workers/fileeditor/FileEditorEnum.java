@@ -9,7 +9,7 @@ public enum FileEditorEnum {
     SET_TEXT_TO_FILE(Pattern.compile("<SET_TEXT_TO_FILE>(.+?)</SET_TEXT_TO_FILE>", Pattern.DOTALL)),
     READ_FILE(Pattern.compile("<READ_FILE>(.+?)</READ_FILE>", Pattern.DOTALL)),
     PUT_TEXT_TO_FILE(Pattern.compile("<PUT_TEXT_TO_FILE>(.+?)</PUT_TEXT_TO_FILE>", Pattern.DOTALL)),
-    CREATE_FOLDER(Pattern.compile("<CREATE_FOLDER>(.+?)</CREATE_FOLDER>", Pattern.DOTALL));
+    ADD_TEXT_TO_FILE_AFTER_NUM_ROW(Pattern.compile("<ADD_TEXT_TO_FILE_AFTER_NUM_ROW>(.+?)</ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", Pattern.DOTALL));
 
     private final Pattern currentPattern;
 

@@ -40,13 +40,19 @@ public class FileEditorWorker implements WorkerListener {
 
         Map<String, String> tagsMag = new HashMap<>();
         tagsMag.put("<GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;GET_ALL_FILES_BY_DIR&gt;");
-        tagsMag.put("<SET_TEXT_TO_FILE>", "&lt;SET_TEXT_TO_FILE&gt;</span>");
-        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
-        tagsMag.put("<PUT_TEXT_TO_FILE>", "&lt;PUT_TEXT_TO_FILE&gt;</span>");
         tagsMag.put("</GET_ALL_FILES_BY_DIR>", "<span style='color:green;'>&lt;/GET_ALL_FILES_BY_DIR&gt;");
+
+        tagsMag.put("<SET_TEXT_TO_FILE>", "<span style='color:green;'>&lt;SET_TEXT_TO_FILE&gt;");
         tagsMag.put("</SET_TEXT_TO_FILE>", "&lt;/SET_TEXT_TO_FILE&gt;</span>");
+
+        tagsMag.put("<READ_FILE>", "<span style='color:green;'>&lt;READ_FILE&gt;");
         tagsMag.put("</READ_FILE>", "<span style='color:green;'>&lt;/READ_FILE&gt;");
+
+        tagsMag.put("<PUT_TEXT_TO_FILE>", "<span style='color:green;'>&lt;PUT_TEXT_TO_FILE&gt;");
         tagsMag.put("</PUT_TEXT_TO_FILE>", "&lt;/PUT_TEXT_TO_FILE&gt;</span>");
+
+        tagsMag.put("<ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", "<span style='color:green;'>&lt;ADD_TEXT_TO_FILE_AFTER_NUM_ROW&gt;");
+        tagsMag.put("</ADD_TEXT_TO_FILE_AFTER_NUM_ROW>", "&lt;/ADD_TEXT_TO_FILE_AFTER_NUM_ROW&gt;</span>");
         contextStorage.addReplacerSpecialTagFromWorkerToGuiMessages(tagsMag);
     }
 
@@ -75,12 +81,12 @@ public class FileEditorWorker implements WorkerListener {
         String result = "[FILE_EDITOR вернул]:[EMPTY]";
         try {
             switch (response.getFileEditorEnum()) {
-                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА) ]: \n" + getTextFromFile(response.getFilePath());
+                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (С номерами строк для работы с файлом) ]: \n" + getTextFromFile(response.getFilePath());
                 case CREATE_FILE -> result = "[FILE_EDITOR CREATE_FILE вернул ответ]: \n" + createFile(response.getFilePath(), response.getText());
-//                    case CREATE_FOLDER -> value = "[CMD вернул ответ]: " +addTextToFile(llmFileEditorParsedResponse.getFileEditorQuery());
                 case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ]: \n" + putTextToFile(response.getFilePath(), response.getNumStart(), response.getNumEnd(), response.getText());
                 case SET_TEXT_TO_FILE -> result = "[FILE_EDITOR SET_TEXT_TO_FILE вернул ответ]: \n" + addTextToFile(response.getFilePath(), response.getText());
                 case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR GET_ALL_FILES_BY_DIR вернул ответ]: \n" + getAllFilesFromDirectory(response.getFilePath());
+                case ADD_TEXT_TO_FILE_AFTER_NUM_ROW -> result = "[FILE_EDITOR ADD_TEXT_TO_FILE_AFTER_NUM_ROW вернул ответ]: \n" + addTextToFileByNumRow(response.getFilePath(), response.getNumStart(), response.getText());
             }
 
         } catch (Exception e) {
@@ -167,9 +173,44 @@ public class FileEditorWorker implements WorkerListener {
                 }
             }
 
-            return "[Текст успешно заменен в файле %s!] [Обновленный файл (ВКЛЮЧАЕТ НОМЕРА СТРОК, КОТОРЫЕ ПРЕДОСТАВЛЯЮТСЯ ТОЛЬКО ДЛЯ ВЫВОДА): %s] ".formatted(filePath, getTextFromFile(filePath));
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл (С номерами строк для работы с файлом): %s] \n".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            return "[Ошибка: Некорректные номера строк или файл не найден!]";
+            throw  new IOException("[Ошибка: Некорректные номера строк или файл не найден! Exception: \n" + e.getMessage() + "]");
+        }
+    }
+
+    private String addTextToFileByNumRow(String filePath, int numRow, String text) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            List<String> lines = new ArrayList<>();
+            String line;
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+
+            List<String> updatedLines = new ArrayList<>();
+            boolean addedText = false;
+            for (int i = 0; i < lines.size(); i++) {
+                updatedLines.add(lines.get(i));
+                if (i ==numRow) {
+                    if (addedText) continue;
+                    addedText = true;
+                    updatedLines.add(text);
+                }
+            }
+            //Если модель выходит за рамки файла, то добавляем в конец
+            if (!addedText)
+                updatedLines.add(text);
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+                for (String updatedLine : updatedLines) {
+                    bw.write(updatedLine);
+                    bw.newLine(); // Добавляем новую строку после каждой строки
+                }
+            }
+
+            return "[Текст успешно заменен в файле %s!] [Обновленный файл (С номерами строк для работы с файлом): %s] \n".formatted(filePath, getTextFromFile(filePath));
+        } catch (Exception e) {
+            throw  new IOException("[Ошибка: Либо файл не найден, либо другая ошибка! Exception: \n" + e.getMessage() + "]");
         }
     }
 
