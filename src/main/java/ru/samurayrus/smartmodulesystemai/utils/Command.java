@@ -1,8 +1,10 @@
-package ru.samurayrus.smartmodulesystemai.workers.fileeditor;
+package ru.samurayrus.smartmodulesystemai.utils;
+
+import org.springframework.boot.configurationprocessor.json.JSONObject;
 
 public class Command {
     private String name;
-    private Arguments arguments;
+    private JSONObject arguments;
 
     // Геттеры и сеттеры
     public String getName() {
@@ -13,11 +15,11 @@ public class Command {
         this.name = name;
     }
 
-    public Arguments getArguments() {
+    public JSONObject getArguments() {
         return arguments;
     }
 
-    public void setArguments(Arguments arguments) {
+    public void setArguments(JSONObject arguments) {
         this.arguments = arguments;
     }
 }

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
-import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
+import ru.samurayrus.smartmodulesystemai.utils.Command;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

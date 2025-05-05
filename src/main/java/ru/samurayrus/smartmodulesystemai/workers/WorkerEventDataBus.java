@@ -1,7 +1,7 @@
 package ru.samurayrus.smartmodulesystemai.workers;
 
 import org.springframework.stereotype.Service;
-import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
+import ru.samurayrus.smartmodulesystemai.utils.Command;
 
 import java.util.HashSet;
 import java.util.Set;

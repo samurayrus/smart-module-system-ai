@@ -1,13 +1,14 @@
 package ru.samurayrus.smartmodulesystemai.workers.fileeditor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
+import ru.samurayrus.smartmodulesystemai.utils.Command;
 import ru.samurayrus.smartmodulesystemai.utils.tools.Function;
 import ru.samurayrus.smartmodulesystemai.utils.tools.Parameters;
 import ru.samurayrus.smartmodulesystemai.utils.tools.Property;
@@ -103,6 +104,7 @@ public class FileEditorWorker implements WorkerListener {
 
         contextStorage.addTool(createFunctionsFindAllFiles());
         contextStorage.addTool(createFunctionsPutIntoFile());
+        contextStorage.addTool(createFunctionsReadFile());
         // Выводим результат (можно использовать Jackson/Gson для сериализации в JSON)
         System.out.println("ToolsWrapper создан и заполнен:");
     }
@@ -131,10 +133,28 @@ public class FileEditorWorker implements WorkerListener {
 
     @Override
     public boolean callWorker(Command command) {
-        System.out.println("YEP");
-        String result = doFileEditionAndReturnResult(new LlmFileEditorParsedResponse(true, null, FileEditorEnum.valueOf(command.getName()), command.getArguments().getPath(), null, 0,0));
+        FileEditorEnum fileEditorEnum;
+        try {
+            fileEditorEnum = FileEditorEnum.valueOf(command.getName());
+        } catch (IllegalArgumentException illegalArgumentException) {
+            return false;
+        }
+        JSONObject args = command.getArguments();
+        String result = "empty";
+        try {
+            switch (fileEditorEnum) {
+                case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR GET_ALL_FILES_BY_DIR вернул ответ]: \n" + getAllFilesFromDirectory((String) args.get("path"));
+                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ (С номерами строк для работы с файлом)]: \n" + putTextToFile((String) args.get("path"), (Integer) args.get("numStart"), (Integer) args.get("numEnd"), (String) args.get("text"));
+                case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (С номерами строк для работы с файлом) ]: \n" + getTextFromFile((String) args.get("path"));
+            }
+        } catch (Exception e) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            result = ("[Ошибка при выполнении FILE_EDITOR запроса] StackTrace: \n " + sw);
+            log.error("Ошибка при операции с файлом", e);
+        }
         contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result);
-        System.out.println("END");
         return true;
     }
 
@@ -284,6 +304,36 @@ public class FileEditorWorker implements WorkerListener {
     private String addTextToFile(String filePath, String text) throws IOException {
         Files.write(Paths.get(filePath), Collections.singleton(text), StandardCharsets.UTF_8);
         return "[В файл " + filePath + " добавлен текст!]";
+    }
+
+    private Tool createFunctionsReadFile() {
+        Property path = new Property();
+        path.setType("string");
+        path.setDescription("Полный путь до файла который нужно прочитать");
+
+        // Создаем объект Properties и заполняем его
+        ru.samurayrus.smartmodulesystemai.utils.tools.Properties properties = new ru.samurayrus.smartmodulesystemai.utils.tools.Properties();
+        properties.setPath(path);
+
+        // Создаем объект Parameters
+        Parameters parameters = new Parameters();
+        parameters.setType("object");
+        parameters.setProperties(properties);
+        parameters.setRequired(Arrays.asList("path"));
+        parameters.setAdditionalProperties(false);
+
+        // Создаем объект Function
+        Function function = new Function();
+        function.setName("READ_FILE");
+        function.setDescription("Чтение указанного файла с получением номеров строк для взаимодействия другими методами");
+        function.setParameters(parameters);
+
+        // Создаем объект Tool
+        Tool tool = new Tool();
+        tool.setType("function");
+        tool.setFunction(function);
+
+        return tool;
     }
 
     private Tool createFunctionsFindAllFiles() {

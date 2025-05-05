@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -12,8 +13,8 @@ import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
 import ru.samurayrus.smartmodulesystemai.utils.RecordLlmContent;
-import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Arguments;
-import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
+import ru.samurayrus.smartmodulesystemai.utils.Arguments;
+import ru.samurayrus.smartmodulesystemai.utils.Command;
 
 import java.util.List;
 import java.util.Map;
@@ -54,11 +55,13 @@ public class GlobalWorkerService {
                 RecordLlmContent recordLlmContent = sendCurrentContextToLLM(chatRequest);
                 String responseContentWithoutThinking = removeThinkingTagFromResponseContent(recordLlmContent.content());
                 //Обновляем контекст
-                contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
+//                contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
                 //Вызываем воркеры с поддержкой tool
-                if (recordLlmContent.toolFunction() == null)
-                    isComplete = !callWorkersIfNeed(responseContentWithoutThinking, false);
-                else {
+                if (recordLlmContent.toolFunction() == null){
+                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
+                isComplete = !callWorkersIfNeed(responseContentWithoutThinking, false);
+            }else {
+                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant",new ObjectMapper().writeValueAsString(recordLlmContent.toolFunction()));
                     isComplete = !callWorkersIfNeed(recordLlmContent.toolFunction());
                 }
                 // Отправляем нейронке результат и ждем реакции при повторе
@@ -114,12 +117,13 @@ public class GlobalWorkerService {
     }
 
     private boolean callWorkersIfNeed(Map<String, String> commandMap) throws JsonProcessingException {
-        Arguments arguments = mapper.readValue(commandMap.get("arguments"), Arguments.class);
+        Map<String, Object> arguments = mapper.readValue(commandMap.get("arguments"), Map.class);
 
+        JSONObject jsonObject = new JSONObject(arguments);
         // Создаём объект Command
         Command command = new Command();
         command.setName(commandMap.get("name"));
-        command.setArguments(arguments);
+        command.setArguments(jsonObject);
         return workerEventDataBus.callActivityWorkers(command);
     }
 

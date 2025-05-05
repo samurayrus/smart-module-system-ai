@@ -1,6 +1,6 @@
 package ru.samurayrus.smartmodulesystemai.workers;
 
-import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
+import ru.samurayrus.smartmodulesystemai.utils.Command;
 
 /**
  * Интерфейс для взаимодействия WorkerEventDataBus с воркерами

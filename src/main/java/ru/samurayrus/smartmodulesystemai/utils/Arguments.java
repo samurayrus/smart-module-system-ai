@@ -1,4 +1,4 @@
-package ru.samurayrus.smartmodulesystemai.workers.fileeditor;
+package ru.samurayrus.smartmodulesystemai.utils;
 
 public class Arguments {
     private String path;
