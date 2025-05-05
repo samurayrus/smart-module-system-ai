@@ -5,6 +5,12 @@ app:
     url: http://localhost:1234/v1
     need-auth: false
     api-key:
+    maxTokens: 4500
+#   double values and not for proxy:
+    temperature: 1
+    presence-penalty: 0
+    frequency-penalty: 0
+    top-p: 1
   modules:
     file-editor-worker:
       enabled: true
