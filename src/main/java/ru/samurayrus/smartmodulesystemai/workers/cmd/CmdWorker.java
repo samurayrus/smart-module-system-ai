@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
 
 import java.io.*;
 import java.util.Arrays;
@@ -44,7 +45,7 @@ public class CmdWorker implements WorkerListener {
     }
 
     @Override
-    public boolean callWorker(String content) {
+    public boolean callWorker(String content, boolean toolMode) {
         LlmCmdParsedResponse llmCmdParsedResponse = llmCmdResponseParser.parseResponse(content);
 
         if (llmCmdParsedResponse.isHasCmd()) {
@@ -75,6 +76,11 @@ public class CmdWorker implements WorkerListener {
             contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result.toString());
             return true;
         }
+        return false;
+    }
+
+    @Override
+    public boolean callWorker(Command command) {
         return false;
     }
 

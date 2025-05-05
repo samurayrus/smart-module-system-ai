@@ -1,6 +1,7 @@
 package ru.samurayrus.smartmodulesystemai.workers;
 
 import org.springframework.stereotype.Service;
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,9 +17,15 @@ public class WorkerEventDataBus {
         return true;
     }
 
-    public boolean callActivityWorkers(String contentFromLlm) {
+    public boolean callActivityWorkers(String contentFromLlm, boolean toolMode) {
         //TODO: возможно сделать через CompletableFuture, если архитектура будет исключать взаимодействие между разными воркерами
-        Set<Boolean> workersReports = workerListeners.stream().map(x -> x.callWorker(contentFromLlm)).collect(Collectors.toSet());
+        Set<Boolean> workersReports = workerListeners.stream().map(x -> x.callWorker(contentFromLlm, toolMode)).collect(Collectors.toSet());
+        return workersReports.contains(true);
+    }
+
+    public boolean callActivityWorkers(Command command) {
+        //TODO: возможно сделать через CompletableFuture, если архитектура будет исключать взаимодействие между разными воркерами
+        Set<Boolean> workersReports = workerListeners.stream().map(x -> x.callWorker(command)).collect(Collectors.toSet());
         return workersReports.contains(true);
     }
 }

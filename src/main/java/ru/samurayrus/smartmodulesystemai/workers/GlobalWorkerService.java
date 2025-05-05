@@ -11,6 +11,9 @@ import org.springframework.web.client.RestTemplate;
 import ru.samurayrus.smartmodulesystemai.config.LLMConfig;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.utils.ChatRequest;
+import ru.samurayrus.smartmodulesystemai.utils.RecordLlmContent;
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Arguments;
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
 
 import java.util.List;
 import java.util.Map;
@@ -48,11 +51,16 @@ public class GlobalWorkerService {
                 //Подсасываем актуальный контекст беседы
                 ChatRequest chatRequest = contextStorage.getCurrentContext();
                 //Выполняем запрос к llm и получаем обработанный ответ
-                String responseContentWithoutThinking = removeThinkingTagFromResponseContent(sendCurrentContextToLLM(chatRequest));
+                RecordLlmContent recordLlmContent = sendCurrentContextToLLM(chatRequest);
+                String responseContentWithoutThinking = removeThinkingTagFromResponseContent(recordLlmContent.content());
                 //Обновляем контекст
                 contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
-                //Вызываем воркеры
-                isComplete = !callWorkersIfNeed(responseContentWithoutThinking);
+                //Вызываем воркеры с поддержкой tool
+                if (recordLlmContent.toolFunction() == null)
+                    isComplete = !callWorkersIfNeed(responseContentWithoutThinking, false);
+                else {
+                    isComplete = !callWorkersIfNeed(recordLlmContent.toolFunction());
+                }
                 // Отправляем нейронке результат и ждем реакции при повторе
                 // <--
             }
@@ -62,7 +70,7 @@ public class GlobalWorkerService {
         }
     }
 
-    private String sendCurrentContextToLLM(ChatRequest chatRequest) throws Exception {
+    private RecordLlmContent sendCurrentContextToLLM(ChatRequest chatRequest) throws Exception {
         HttpEntity<String> request = new HttpEntity<>(mapper.writeValueAsString(chatRequest), headers);
         ResponseEntity<String> response = restTemplate.exchange(
                 llmConfig.getUrl() + "/chat/completions",
@@ -78,7 +86,7 @@ public class GlobalWorkerService {
         }
     }
 
-    private String getContentFromJsonFromAi(String jsonAiAnswer) throws JsonProcessingException {
+    private RecordLlmContent getContentFromJsonFromAi(String jsonAiAnswer) throws JsonProcessingException {
         // 1. Парсим основной ответ
         Map<String, Object> body = mapper.readValue(jsonAiAnswer, new TypeReference<Map<String, Object>>() {
         });
@@ -89,12 +97,30 @@ public class GlobalWorkerService {
 
         // 3. Достаем message как Map (без преобразования в строку и обратно)
         Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-        System.out.println("TOOL : " + message.get("tool_calls") );
-        return (String) message.get("content");
+        // 4. Достаем вызовы tool если они есть. Одновременно доступен один вызов
+        System.out.println("TOOL : " + message.get("tool_calls"));
+        Map<String, Object> tool = null;
+        if (message.get("tool_calls") != null)
+            tool = ((List<Map<String, Object>>) message.get("tool_calls")).get(0);
+        //[{id=675888457, type=function, function={name=search_files_for_path, arguments={"path":"D:\\ProjectEditor"}}}]
+
+        return new RecordLlmContent((String) message.get("content"), tool == null ? null : (Map<String, String>) tool.get("function"));
+//        return (String) message.get("content");
+
     }
 
-    private boolean callWorkersIfNeed(String contentFromLLM) {
-        return workerEventDataBus.callActivityWorkers(contentFromLLM);
+    private boolean callWorkersIfNeed(String contentFromLLM, boolean toolMode) {
+        return workerEventDataBus.callActivityWorkers(contentFromLLM, toolMode);
+    }
+
+    private boolean callWorkersIfNeed(Map<String, String> commandMap) throws JsonProcessingException {
+        Arguments arguments = mapper.readValue(commandMap.get("arguments"), Arguments.class);
+
+        // Создаём объект Command
+        Command command = new Command();
+        command.setName(commandMap.get("name"));
+        command.setArguments(arguments);
+        return workerEventDataBus.callActivityWorkers(command);
     }
 
     /**
@@ -102,7 +128,7 @@ public class GlobalWorkerService {
      * она подумала, чтобы ответить, ответила и больше нам это не надо (qwen как раз рекомендует так делать)
      **/
     private String removeThinkingTagFromResponseContent(String responseContent) {
-        if(responseContent == null) return "[TOOL]";
+        if (responseContent == null) return "[TOOL]";
         return Pattern.compile("<think>(.+?)</think>", Pattern.DOTALL).matcher(responseContent).replaceAll("[thinking...]");
     }
 }

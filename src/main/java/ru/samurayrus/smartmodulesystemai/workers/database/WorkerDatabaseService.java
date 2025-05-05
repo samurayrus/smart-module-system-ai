@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -53,7 +54,12 @@ public class WorkerDatabaseService implements WorkerListener {
     }
 
     @Override
-    public boolean callWorker(String content) {
+    public boolean callWorker(Command command) {
+        return false;
+    }
+
+    @Override
+    public boolean callWorker(String content, boolean toolMode) {
         LlmSqlParsedResponse llmSqlParsedResponse = responseParser.parseResponse(content);
 
         if (llmSqlParsedResponse.isHasSql()) {

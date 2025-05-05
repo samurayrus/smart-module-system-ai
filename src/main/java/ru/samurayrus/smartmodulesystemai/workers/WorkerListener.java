@@ -1,5 +1,7 @@
 package ru.samurayrus.smartmodulesystemai.workers;
 
+import ru.samurayrus.smartmodulesystemai.workers.fileeditor.Command;
+
 /**
  * Интерфейс для взаимодействия WorkerEventDataBus с воркерами
  */
@@ -14,5 +16,7 @@ public interface WorkerListener {
      * @param content
      * @return boolean
      */
-    boolean callWorker(String content);
+    boolean callWorker(String content, boolean toolMode);
+
+    boolean callWorker(Command command);
 }

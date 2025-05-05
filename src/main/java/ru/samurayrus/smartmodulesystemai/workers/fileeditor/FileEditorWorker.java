@@ -1,12 +1,17 @@
 package ru.samurayrus.smartmodulesystemai.workers.fileeditor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.samurayrus.smartmodulesystemai.gui.ContextStorage;
-import ru.samurayrus.smartmodulesystemai.utils.tools.*;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Function;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Parameters;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Property;
+import ru.samurayrus.smartmodulesystemai.utils.tools.Tool;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerEventDataBus;
 import ru.samurayrus.smartmodulesystemai.workers.WorkerListener;
 
@@ -102,8 +107,9 @@ public class FileEditorWorker implements WorkerListener {
         System.out.println("ToolsWrapper создан и заполнен:");
     }
 
+    @SneakyThrows
     @Override
-    public boolean callWorker(String content) {
+    public boolean callWorker(String content, boolean toolMode) {
         LlmFileEditorParsedResponse response = llmFileEditorResponseParser.parseResponse(content);
 
         if (response.isHasFileEditor()) {
@@ -123,6 +129,15 @@ public class FileEditorWorker implements WorkerListener {
         return false;
     }
 
+    @Override
+    public boolean callWorker(Command command) {
+        System.out.println("YEP");
+        String result = doFileEditionAndReturnResult(new LlmFileEditorParsedResponse(true, null, FileEditorEnum.valueOf(command.getName()), command.getArguments().getPath(), null, 0,0));
+        contextStorage.addMessageToContextAndMessagesListIfEnabled("tool", result);
+        System.out.println("END");
+        return true;
+    }
+
     private String doFileEditionAndReturnResult(LlmFileEditorParsedResponse response) {
         String result = "[FILE_EDITOR вернул]:[EMPTY]";
         try {
@@ -140,7 +155,7 @@ public class FileEditorWorker implements WorkerListener {
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
             result = ("[Ошибка при выполнении FILE_EDITOR запроса] StackTrace: \n " + sw);
-            log.error("Ошибка при операции с файлом",e);
+            log.error("Ошибка при операции с файлом", e);
         }
         return result;
     }
@@ -221,7 +236,7 @@ public class FileEditorWorker implements WorkerListener {
             }
             return "[Текст успешно заменен в файле %s!] [Обновленный файл (С номерами строк для работы с файлом): %s] \n".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            throw  new IOException("[Ошибка: Некорректные номера строк или файл не найден! Exception: \n" + e.getMessage() + "]");
+            throw new IOException("[Ошибка: Некорректные номера строк или файл не найден! Exception: \n" + e.getMessage() + "]");
         }
     }
 
@@ -237,7 +252,7 @@ public class FileEditorWorker implements WorkerListener {
             boolean addedText = false;
             for (int i = 0; i < lines.size(); i++) {
                 updatedLines.add(lines.get(i));
-                if (i ==numRow) {
+                if (i == numRow) {
                     if (addedText) continue;
                     addedText = true;
                     updatedLines.add(text);
@@ -256,7 +271,7 @@ public class FileEditorWorker implements WorkerListener {
 
             return "[Текст успешно заменен в файле %s!] [Обновленный файл (С номерами строк для работы с файлом): %s] \n".formatted(filePath, getTextFromFile(filePath));
         } catch (Exception e) {
-            throw  new IOException("[Ошибка: Либо файл не найден, либо другая ошибка! Exception: \n" + e.getMessage() + "]");
+            throw new IOException("[Ошибка: Либо файл не найден, либо другая ошибка! Exception: \n" + e.getMessage() + "]");
         }
     }
 
@@ -271,7 +286,7 @@ public class FileEditorWorker implements WorkerListener {
         return "[В файл " + filePath + " добавлен текст!]";
     }
 
-    private Tool createFunctionsFindAllFiles(){
+    private Tool createFunctionsFindAllFiles() {
         Property path = new Property();
         path.setType("string");
         path.setDescription("Путь до папки в которой нужно осуществить поиск");
@@ -289,7 +304,7 @@ public class FileEditorWorker implements WorkerListener {
 
         // Создаем объект Function
         Function function = new Function();
-        function.setName("search_files_for_path");
+        function.setName("GET_ALL_FILES_BY_DIR");
         function.setDescription("Осуществляет поиск всех файлов в папке по пути и всех каталогах внутри");
         function.setParameters(parameters);
 
@@ -301,7 +316,7 @@ public class FileEditorWorker implements WorkerListener {
         return tool;
     }
 
-    private Tool createFunctionsPutIntoFile(){
+    private Tool createFunctionsPutIntoFile() {
         Property path = new Property();
         path.setType("string");
         path.setDescription("Полный путь до файла");
@@ -327,12 +342,12 @@ public class FileEditorWorker implements WorkerListener {
         Parameters parameters = new Parameters();
         parameters.setType("object");
         parameters.setProperties(properties);
-        parameters.setRequired(Arrays.asList("path","numStart","numEnd","text"));
+        parameters.setRequired(Arrays.asList("path", "numStart", "numEnd", "text"));
         parameters.setAdditionalProperties(false);
 
         // Создаем объект Function
         Function function = new Function();
-        function.setName("put_text_into_file_by_rows");
+        function.setName("PUT_TEXT_TO_FILE");
         function.setDescription("Заменяет все строки между указанными на переданные в параметре");
         function.setParameters(parameters);
 
