@@ -101,13 +101,16 @@ public class ContextStorage {
 
     private ChatRequest makeFirstChatRequest() {
         ChatRequest chatRequest = new ChatRequest();
-        chatRequest.setMaxTokens(4500);
-        chatRequest.setFrequencyPenalty(0);
+        chatRequest.setMaxTokens(llmConfig.getMaxTokens());
+        chatRequest.setFrequencyPenalty(llmConfig.getFrequencyPenalty());
         chatRequest.setModel(llmConfig.getModel());
-//        chatRequest.setModel("gemma-3-4b-it-8q");
-        chatRequest.setTemperature(0.7);
+        chatRequest.setTemperature(llmConfig.getTemperature());
+        chatRequest.setTopP(llmConfig.getTopP());
+        chatRequest.setPresencePenalty(llmConfig.getPresencePenalty());
+        //TODO: stream not support (httpClient & change logic workers and swing)
         chatRequest.setStream(false);
-        chatRequest.setTopP(0.95);
+
+
         ChatMessage systemMessage = new ChatMessage();
         systemMessage.setRole("system");
         systemMessage.setContent(getSystemPrompt());
