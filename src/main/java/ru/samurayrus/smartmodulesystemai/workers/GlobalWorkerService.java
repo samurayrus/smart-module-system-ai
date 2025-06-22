@@ -61,7 +61,8 @@ public class GlobalWorkerService {
                     contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant", responseContentWithoutThinking);
                 isComplete = !callWorkersIfNeed(responseContentWithoutThinking, false);
             }else {
-                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant",new ObjectMapper().writeValueAsString(recordLlmContent.toolFunction()));
+                    System.out.println("tool: "+new ObjectMapper().writeValueAsString(recordLlmContent.toolFunction()));
+//                    contextStorage.addMessageToContextAndMessagesListIfEnabled("assistant",new ObjectMapper().writeValueAsString(recordLlmContent.toolFunction()));
                     isComplete = !callWorkersIfNeed(recordLlmContent.toolFunction());
                 }
                 // Отправляем нейронке результат и ждем реакции при повторе

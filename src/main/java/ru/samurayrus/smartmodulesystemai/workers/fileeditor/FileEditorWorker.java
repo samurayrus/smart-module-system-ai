@@ -144,7 +144,7 @@ public class FileEditorWorker implements WorkerListener {
         try {
             switch (fileEditorEnum) {
                 case GET_ALL_FILES_BY_DIR -> result = "[FILE_EDITOR GET_ALL_FILES_BY_DIR вернул ответ]: \n" + getAllFilesFromDirectory((String) args.get("path"));
-                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ (С номерами строк для работы с файлом)]: \n" + putTextToFile((String) args.get("path"), (Integer) args.get("numStart"), (Integer) args.get("numEnd"), (String) args.get("text"));
+                case PUT_TEXT_TO_FILE -> result = "[FILE_EDITOR PUT_TEXT_TO_FILE вернул ответ (С номерами строк для работы с файлом)]: \n" + putTextToFile((String) args.get("path"), Integer.parseInt((String) args.get("numStart")), Integer.parseInt((String) args.get("numEnd")), (String) args.get("text"));
                 case READ_FILE -> result = "[FILE_EDITOR READ_FILE вернул ответ (С номерами строк для работы с файлом) ]: \n" + getTextFromFile((String) args.get("path"));
             }
         } catch (Exception e) {
