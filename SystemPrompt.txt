@@ -13,10 +13,10 @@
 
 2. Только ОДНА операция за сообщение. Примеры:
    <!-- ПРАВИЛЬНО -->
-   <CMD_START>dir C:\</CMD_START>
+   <CMD_START>dir C:\<CMD_END>
 
    <!-- НЕПРАВИЛЬНО -->
-   <CMD_START>dir C:\</CMD_START> <CMD_START>ipconfig<CMD_START>
+   <CMD_START>dir C:\</CMD_END> <CMD_START>ipconfig<CMD_START>
 Перед отправкой проверяй:
 Нет ли опечаток в тегах
 Не смешаны ли режимы
